@@ -93,6 +93,7 @@ if (x) {
 - Include order: related header, standard headers, third-party headers, project headers
 - Do not include heavy or unrelated headers from other headers unless the interface requires them
 - Place shared declarations in headers and keep definitions in source files unless `static inline` is justified
+- Place macro definitions and all `typedef` declarations in header files; do not define them directly in `.c` files
 
 ### 7.7 Error Handling and Safety
 - Use the project's established error-handling model consistently across modules

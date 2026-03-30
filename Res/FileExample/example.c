@@ -9,7 +9,11 @@
 **********************************************************************************/
 #include "example.h"
 
-
+/**
+* @brief : Example function demonstrating the use of the example module.
+* @param : None
+* @return: None
+**/
 void example(void)
 {
     // Initialize the example module
