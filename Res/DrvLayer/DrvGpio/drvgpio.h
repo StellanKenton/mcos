@@ -11,6 +11,7 @@
 #define DRVGPIO_H
 
 #include <stdint.h>
+#include "drvgpio_pinmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,11 +21,6 @@ typedef enum eDrvGpioPinState {
     DRVGPIO_PIN_RESET = 0,
     DRVGPIO_PIN_SET
 } eDrvGpioPinState;
-
-typedef enum eDrvGpioPinMap {
-    DRVGPIO_LED0,
-    DRVGPIO_MAX,
-} eDrvGpioPinMap;
 
 void drvGpioInit(void);
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state);
