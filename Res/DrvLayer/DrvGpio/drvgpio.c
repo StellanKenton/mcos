@@ -10,6 +10,11 @@
 #include "drvgpio.h"
 #include <stddef.h>
 
+/**
+* @brief : Check if the provided logical pin mapping is valid.
+* @param : pin GPIO pin mapping identifier.
+* @return: true if the pin mapping is valid, false otherwise.
+**/
 static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 {
 	return (pin >= 0) && (pin < DRVGPIO_MAX);
@@ -22,7 +27,9 @@ static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 **/
 void drvGpioInit(void)
 {
+/*************************Bsp Area***********************/
 
+/*******************************************************/
 }
 
 /**
@@ -33,7 +40,12 @@ void drvGpioInit(void)
 **/
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 {
+    if (!drvGpioIsValidPin(pin)) {
+        return;
+    }
+/*************************Bsp Area***********************/
 
+/*******************************************************/
 }
 
 /**
@@ -43,7 +55,12 @@ void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 **/
 eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 {
+    if (!drvGpioIsValidPin(pin)) {
+        return;
+    }
+/*************************Bsp Area***********************/
 
+/*******************************************************/
 }
 
 /**
@@ -53,7 +70,12 @@ eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 **/
 void drvGpioToggle(eDrvGpioPinMap pin)
 {
+    if (!drvGpioIsValidPin(pin)) {
+        return;
+    }
+/*************************Bsp Area***********************/
 
+/*******************************************************/
 }
 
 
