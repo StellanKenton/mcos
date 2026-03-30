@@ -8,11 +8,14 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "drvgpio.h"
-#include <stddef.h>
+
+#include <stdbool.h>
+
+#include "bsp_gpio.h"
 
 static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 {
-	return (pin >= 0) && (pin < DRVGPIO_MAX);
+    return (pin >= 0) && (pin < DRVGPIO_MAX);
 }
 
 /**
@@ -22,7 +25,7 @@ static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 **/
 void drvGpioInit(void)
 {
-
+    bspGpioInit();
 }
 
 /**
@@ -34,6 +37,11 @@ void drvGpioInit(void)
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 {
 
+    if (!drvGpioIsValidPin(pin)) {
+        return;
+    }
+
+    bspGpioWrite(pin, state);
 }
 
 /**
@@ -43,7 +51,11 @@ void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 **/
 eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 {
+    if (!drvGpioIsValidPin(pin)) {
+        return DRVGPIO_PIN_RESET;
+    }
 
+    return bspGpioRead(pin);
 }
 
 /**
@@ -53,7 +65,11 @@ eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 **/
 void drvGpioToggle(eDrvGpioPinMap pin)
 {
+    if (!drvGpioIsValidPin(pin)) {
+        return;
+    }
 
+    bspGpioToggle(pin);
 }
 
 

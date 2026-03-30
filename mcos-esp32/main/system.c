@@ -4,6 +4,7 @@
 #include "esp_log.h"
 
 #include "app_wifi.h"
+#include "drvgpio.h"
 #include "system.h"
 
 #define SYSTEM_TASK_STACK_SIZE 3072
@@ -26,6 +27,8 @@ static void systemTask(void *pvParameters)
 
 void systemStartTasks(void)
 {
+    drvGpioInit();
+
     BaseType_t lResult = xTaskCreate(systemTask,
                                      "system_task",
                                      SYSTEM_TASK_STACK_SIZE,
