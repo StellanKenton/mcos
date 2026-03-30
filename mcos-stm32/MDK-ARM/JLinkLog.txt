@@ -1,0 +1,47 @@
+T9A20 001:291.368   SEGGER J-Link V7.98c Log File
+T9A20 001:291.976   DLL Compiled: Aug  7 2024 15:37:06
+T9A20 001:291.989   Logging started @ 2026-03-30 03:28
+T9A20 001:292.000   Process: C:\Users\senki\AppData\Local\Keil_v5\UV4\UV4.exe
+T9A20 001:292.017 - 1292.012ms
+T9A20 001:292.139 JLINK_SetWarnOutHandler(...)
+T9A20 001:292.151 - 0.117ms
+T9A20 001:292.166 JLINK_OpenEx(...)
+T9A20 001:294.525   
+  ***** Error: 
+T9A20 001:294.559   Cannot connect to J-Link.
+T9A20 001:294.802 - 2.635ms returns "Cannot connect to J-Link."
+T9A20 001:295.014 
+  ***** Warning: 
+T9A20 001:295.036 API Error: API JLINK_GetHardwareVersion function called before JLINKARM_Open()
+T9A20 001:295.054 JLINK_GetHardwareVersion()
+T9A20 001:296.130   
+  ***** Error: 
+T9A20 001:310.144   Cannot connect to J-Link.
+T9A20 001:310.350 - 15.294ms
+T9A20 002:842.672 JLINK_IsOpen()
+T9A20 002:842.709 - 0.029ms returns 0x00
+T9A20 002:851.712 JLINK_EMU_SelectByUSBSN(SerialNo = 0)
+T9A20 002:852.443 - 9.725ms returns 0xFFFFFFFF
+T9A20 002:852.458 JLINK_EnableLog(...)
+T9A20 002:852.462 - 0.003ms
+T9A20 002:852.472 JLINK_SetLogFile(...)
+T9A20 002:852.475 - 0.008ms
+T9A20 002:852.480 JLINK_SetWarnOutHandler(...)
+T9A20 002:852.483 - 0.003ms
+T9A20 002:852.488 JLINK_OpenEx(...)
+T9A20 002:853.590   
+  ***** Error: 
+T9A20 002:853.603   Cannot connect to J-Link.
+T9A20 002:853.723 - 1.235ms returns "Cannot connect to J-Link."
+T9A20 002:853.983 
+  ***** Warning: 
+T9A20 002:853.994 API Error: API JLINK_GetHardwareVersion function called before JLINKARM_Open()
+T9A20 002:854.001 JLINK_GetHardwareVersion()
+T9A20 002:855.216   
+  ***** Error: 
+T9A20 002:855.232   Cannot connect to J-Link.
+T9A20 002:855.355 - 1.353ms
+T9A20 003:509.997 JLINK_Close()
+T9A20 003:510.110 - 0.113ms
+T9A20 003:510.125   
+T9A20 003:510.131   Closed
