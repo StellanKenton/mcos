@@ -1,18 +1,18 @@
-# Coding Rules
+# 编码规则
 
-## 0. Environment Visual Studio Code + windows11
+## 0. 环境：Visual Studio Code + Windows 11
 
-## 1. Comments: English only
+## 1. 注释：仅使用英文
 
-## 2. Text Encoding & Editor Format
-- Default text encoding: UTF-8
-- Default indentation: 4 spaces, no tabs
-- Default line ending: LF (`\n`)
-- Trim trailing whitespace before commit
-- Every text file must end with a single newline
-- Exception: keep Markdown trailing spaces only when they are intentionally used for line breaks
+## 2. 文本编码与编辑器格式
+- 默认文本编码：UTF-8
+- 默认缩进：4 个空格，不使用制表符
+- 默认换行符：LF（`\n`）
+- 提交前清理行尾多余空白
+- 每个文本文件必须以且仅以一个换行符结尾
+- 例外：仅当 Markdown 行尾空格被有意用于换行时才保留
 
-## 3. Brace Style: Same line
+## 3. 大括号风格：同行
 ```c
 void func() {
 }
@@ -21,162 +21,164 @@ if (x) {
 }
 ```
 
-## 4. General Engineering Principles
-- Follow existing project conventions before introducing new patterns
-- Do not mix refactoring with feature changes unless required by the task
-- Every non-trivial change should consider error handling, logging, and testability
-- Public behavior and interfaces must remain backward compatible unless the task explicitly allows breaking changes
+## 4. 通用工程原则
+- 在引入新模式之前，先遵循现有项目约定
+- 除非任务明确要求，否则不要把重构和功能变更混在一起
+- 每个非平凡修改都应考虑错误处理、日志记录和可测试性
+- 除非任务明确允许破坏性变更，否则对外行为和接口必须保持向后兼容
 
-## 5. Naming
-- Use descriptive names;
-- Use camelCase for identifiers in C code unless an external SDK or third-party library requires a different style
-- Global variables and file-scope static variables must start with `g`, for example `gSystemState`
-- Temporary local variables should start with `l`, for example `lRetryCount`
-- Struct type names should start with `st`, for example `stWifiConfig`
-- Enum type names should start with `e`, for example `eSystemMode`
-- Function names should start with the module name whenever practical, for example `uartInit`, `wifiConnect`, or `motorSetSpeed`
-- Macro names should use all caps with underscores only when a macro is necessary
-- Constants should follow the surrounding module style; prefer `const` objects over macros when C allows it cleanly
-- Boolean names should read as predicates, such as `isReady`, `hasAlarm`, or `shouldRetry`
+## 5. 命名
+- 使用具有描述性的名称
+- C 代码中的标识符默认使用 camelCase，除非外部 SDK 或第三方库要求其他风格
+- 全局变量和文件作用域的静态变量必须以 `g` 开头，例如 `gSystemState`
+- 临时局部变量应以 `l` 开头，例如 `lRetryCount`
+- 结构体类型名应以 `st` 开头，例如 `stWifiConfig`
+- 枚举类型名应以 `e` 开头，例如 `eSystemMode`
+- 函数名在可行时应以前缀模块名开头，例如 `uartInit`、`wifiConnect` 或 `motorSetSpeed`
+- 宏名称仅在确实需要宏时使用全大写加下划线
+- 常量应遵循所在模块的现有风格；当 C 代码能自然表达时，优先使用 `const` 对象而不是宏
+- 布尔名称应体现谓词含义，例如 `isReady`、`hasAlarm` 或 `shouldRetry`
 
-## 6. File and Dependency Rules
-- Keep one clear responsibility per file
-- Prefer small headers and small modules over large multi-purpose files
-- Add new dependencies only when they provide clear value
-- Include or import only what is used
-- Remove dead code, unused includes, and unused imports introduced by the change
+## 6. 文件与依赖规则
+- 每个文件保持单一且清晰的职责
+- 优先使用小型头文件和小型模块，而不是大型多用途文件
+- 仅在新依赖具有明确价值时才引入
+- 只包含或导入实际使用的内容
+- 删除本次变更引入的死代码、未使用的头文件和未使用的导入
 
-## 7. C Rules
+## 7. C 规则
 
-### 7.1 Style and Language Use
-- Follow the C standard configured by the project toolchain; do not require a newer compiler mode without need
-- Write portable C first, then add compiler-specific extensions only when they are required and isolated
-- Use `const` wherever it improves correctness, especially for lookup tables, pointer parameters, and read-only buffers
-- Initialize variables at declaration whenever practical; do not leave state implicit
-- Prefer explicit casts only when necessary; do not use casts to hide type mistakes or warnings
-- Prefer `static inline` helper functions over function-like macros when type safety and readability matter
-- Use `NULL` only for null pointers; do not use `0` to express pointer intent
+### 7.1 风格与语言使用
+- 遵循项目工具链配置的 C 标准；无必要时不要要求更高版本的编译器模式
+- 先编写可移植的 C 代码，仅在确有需要且能够隔离影响时再使用编译器特定扩展
+- 只要能提升正确性，就应使用 `const`，尤其适用于查找表、指针参数和只读缓冲区
+- 变量在可行时应在声明时初始化；不要让状态依赖隐式默认值
+- 仅在必要时使用显式类型转换；不要用类型转换掩盖类型错误或编译警告
+- 当类型安全和可读性重要时，优先使用 `static inline` 辅助函数而不是函数式宏
+- `NULL` 仅用于空指针；不要用 `0` 表达指针语义
+- 结构体名使用 `st` 前缀，枚举名使用 `e` 前缀，全局变量和静态变量使用 `g` 前缀，以便在混合嵌入式代码中清晰表达类型意图，剩余部分使用 camelCase
+- 函数使用驼峰法命名，前缀使用模块名
 
-### 7.2 Module and File Design
-- One source file should implement one clear module responsibility
-- Expose only the minimum required interface in headers; keep internal helpers `static`
-- Functions in the same module should use a consistent module prefix
-- Avoid cross-module access to internal state; provide access functions when coordination is needed
-- Keep header files small, stable, and safe to include from multiple translation units
+### 7.2 模块与文件设计
+- 一个源文件应只实现一个清晰的模块职责
+- 头文件中只暴露最小必要接口；内部辅助函数保持为 `static`
+- 同一模块中的函数应使用一致的模块前缀
+- 避免跨模块直接访问内部状态；在需要协作时提供访问函数
+- 头文件应保持小巧、稳定，并能安全地被多个编译单元包含
 
-### 7.3 Data Types and Memory
-- Use fixed-width integer types such as `uint8_t` and `int32_t` when register layout, protocol layout, storage width, or overflow boundaries matter
-- Use plain `int` only when width does not matter and it matches the surrounding codebase convention
-- Keep struct layout intentional; do not rely on compiler packing unless the hardware or protocol requires it and the tradeoff is documented
-- Avoid dynamic allocation in embedded runtime paths unless the module clearly owns the memory model and failure handling
-- If dynamic allocation is necessary, define allocation, release, timeout, and failure behavior explicitly
-- Prefer caller-provided buffers in hot paths and ISR-adjacent code
+### 7.3 数据类型与内存
+- 当寄存器布局、协议布局、存储宽度或溢出边界有要求时，使用 `uint8_t`、`int32_t` 等定宽整数类型
+- 仅当位宽无关且符合周边代码库约定时才使用普通 `int`
+- 结构体布局应是有意设计的；除非硬件或协议明确要求且已记录权衡，否则不要依赖编译器打包行为
+- 在嵌入式运行路径中尽量避免动态分配，除非模块对内存模型和失败处理有清晰所有权
+- 如果必须使用动态分配，应显式定义分配、释放、超时和失败时的行为
+- 在热点路径和接近 ISR 的代码中，优先使用调用方提供的缓冲区
 
-### 7.4 Functions and Parameters
-- Keep functions short, single-purpose, and easy to trace in a debugger
-- Validate pointer parameters, sizes, and enum values at module boundaries
-- Return explicit status codes when failure is possible; document the meaning of each return value
-- Use output parameters only when they are clearer than returning a value directly
-- Avoid long parameter lists; group related parameters into a struct when they represent one configuration object
-- Do not hide hardware side effects in utility-looking functions
+### 7.4 函数与参数
+- 函数应保持简短、单一职责，并且便于在调试器中追踪
+- 在模块边界校验指针参数、尺寸参数和枚举值
+- 在可能失败时返回明确的状态码，并记录每种返回值的含义
+- 仅当输出参数比直接返回值更清晰时才使用输出参数
+- 避免过长的参数列表；当一组相关参数共同表示一个配置对象时，使用结构体封装
+- 不要在看似工具函数的接口中隐藏硬件副作用
 
-### 7.5 Macros, Enums, and Structs
-- Use macros only for compile-time constants, conditional compilation, small token manipulation, or hardware register access patterns that cannot be expressed well in C
-- Parenthesize macro parameters and the full macro result when arithmetic or expressions are involved
-- Do not place side effects in macro arguments unless the macro is explicitly designed for that contract
-- Prefer enums for named state sets and mode selections; keep enum values stable when they map to protocol or hardware values
-- Use struct names with the `st` prefix and enum names with the `e` prefix to keep type intent obvious in mixed embedded code
+### 7.5 宏、枚举与结构体
+- 宏仅用于编译期常量、条件编译、简单记号拼接，或无法用 C 良好表达的硬件寄存器访问模式
+- 当宏涉及算术或表达式时，宏参数和整个宏结果都必须加括号
+- 除非宏的契约就是如此设计，否则不要在宏实参中放入带副作用的表达式
+- 对具名状态集合和模式选择优先使用枚举；当枚举值映射到协议或硬件值时，应保持稳定
 
-### 7.6 Headers and Includes
-- Headers should compile cleanly when included in a source file on their own with required dependencies present
-- Use include guards or `#pragma once` consistently with the existing project style
-- Include order: related header, standard headers, third-party headers, project headers
-- Do not include heavy or unrelated headers from other headers unless the interface requires them
-- Place shared declarations in headers and keep definitions in source files unless `static inline` is justified
-- Place macro definitions and all `typedef` declarations in header files; do not define them directly in `.c` files
 
-### 7.7 Error Handling and Safety
-- Use the project's established error-handling model consistently across modules
-- Never ignore hardware, communication, or allocation failures silently
-- Assertions can protect programmer assumptions, but they must not replace runtime error handling for expected failures
-- Keep log output actionable and low-noise, especially in fast loops, interrupt-adjacent paths, and communication handlers
-- Mark interrupt-shared or hardware-updated state `volatile` only when the access model truly requires it; do not use `volatile` as a synchronization substitute
+### 7.6 头文件与包含
+- 头文件在具备所需依赖时，应能被任意源文件单独包含并正确编译
+- 根据现有项目风格一致地使用 include guard 或 `#pragma once`
+- 包含顺序：相关头文件、标准库头文件、第三方头文件、项目头文件
+- 除非接口确实需要，否则不要在头文件中包含重量级或无关的其他头文件
+- 共享声明放在头文件中，定义放在源文件中；只有在 `static inline` 有充分理由时才例外
+- 宏定义和所有 `typedef` 声明应放在头文件中；不要直接定义在 `.c` 文件里
 
-### 7.8 Concurrency and Interrupt Context
-- Minimize shared mutable state between tasks, interrupts, and callbacks
-- Keep ISR code short, bounded, and free of blocking operations
-- When data is shared across contexts, make ownership, update order, and critical-section rules explicit
-- Prefer lock-free or deferred-processing patterns for interrupt-heavy paths when they reduce latency and complexity
-- Document which APIs may be called from task context, interrupt context, or both
+### 7.7 错误处理与安全性
+- 在各模块中一致地使用项目既定的错误处理模型
+- 绝不能静默忽略硬件、通信或内存分配失败
+- 断言可以保护程序员假设，但不能替代对可预期失败的运行时错误处理
+- 日志输出应可操作且噪声低，尤其是在快速循环、接近中断的路径和通信处理逻辑中
+- 仅当访问模型确实需要时，才把中断共享或硬件更新的状态标记为 `volatile`；不要把 `volatile` 当作同步机制的替代品
 
-### 7.9 Testing
-- Add or update tests for non-trivial logic changes when the target platform or host test environment supports it
-- Prefer deterministic tests over timing-sensitive tests
-- Cover normal flow, boundary conditions, invalid inputs, and failure paths
-- For hardware-facing code, isolate pure logic so it can be tested without the full device when practical
+### 7.8 并发与中断上下文
+- 尽量减少任务、中断和回调之间共享的可变状态
+- ISR 代码应保持简短、有界，并且不能包含阻塞操作
+- 当数据跨上下文共享时，要明确所有权、更新顺序和临界区规则
+- 在中断密集路径中，如果无锁或延后处理模式能降低延迟和复杂度，应优先使用
+- 记录哪些 API 可在任务上下文、中断上下文或两者中调用
 
-## 8. Python Rules
+### 7.9 测试
+- 对非平凡逻辑变更，在目标平台或主机测试环境支持的前提下补充或更新测试
+- 优先使用确定性测试，而不是对时序敏感的测试
+- 覆盖正常流程、边界条件、非法输入和失败路径
+- 对面向硬件的代码，在可行时将纯逻辑隔离出来，以便在没有完整设备的情况下进行测试
 
-### 8.1 Style and Structure
-- Target the Python version used by the project environment
-- Follow PEP 8 unless the repository already enforces a different formatter or linter style
-- Use 4 spaces for indentation and keep files UTF-8 encoded
-- Prefer clear, direct code over compact one-liners
-- Keep modules focused; separate scripts, reusable libraries, and configuration logic
+## 8. Python 规则
 
-### 8.2 Typing and Interfaces
-- Add type hints to new public functions, methods, and module-level constants where practical
-- Public functions should have clear inputs, outputs, and error behavior
-- Use `dataclass` when it improves clarity for structured data objects
-- Prefer `Enum` for discrete sets of named values
-- Avoid returning multiple unrelated meanings from one value; use explicit result objects when needed
+### 8.1 风格与结构
+- 以项目环境使用的 Python 版本为目标
+- 除非仓库已经强制使用其他格式化或静态检查风格，否则遵循 PEP 8
+- 使用 4 个空格缩进，并保持文件为 UTF-8 编码
+- 优先编写清晰、直接的代码，而不是过度紧凑的一行写法
+- 模块职责应保持聚焦；脚本、可复用库和配置逻辑应分离
 
-### 8.3 Imports and Dependencies
-- Group imports as standard library, third-party, and local modules
-- Avoid wildcard imports
-- Import only what is used
-- Prefer `pathlib.Path` over manual string path manipulation
-- Add external packages only when the standard library or existing dependencies are insufficient
+### 8.2 类型与接口
+- 对新增的公共函数、方法和模块级常量，在可行时补充类型标注
+- 公共函数应具有清晰的输入、输出和错误行为
+- 当 `dataclass` 能提升结构化数据对象的清晰度时，应优先使用
+- 对离散的具名取值优先使用 `Enum`
+- 避免让一个返回值承载多个无关含义；必要时使用显式结果对象
 
-### 8.4 Function and Class Design
-- Keep functions small and cohesive
-- Avoid hidden side effects
-- Prefer pure functions for transform logic when possible
-- Use classes only when state and behavior naturally belong together
-- Keep constructors lightweight; avoid heavy IO or network calls in `__init__`
-- Use context managers for files, locks, and other managed resources
+### 8.3 导入与依赖
+- 按标准库、第三方库和本地模块分组导入
+- 避免使用通配符导入
+- 只导入实际使用的内容
+- 路径处理优先使用 `pathlib.Path`，而不是手工拼接字符串路径
+- 仅当标准库或现有依赖不足以解决问题时才引入外部包
 
-### 8.5 Error Handling and Logging
-- Catch specific exceptions, never use bare `except:`
-- Raise exceptions with messages that help locate and diagnose the problem
-- Do not suppress exceptions unless there is a clear recovery strategy
-- Use `logging` instead of `print` for non-trivial runtime diagnostics
-- Validate external inputs early
+### 8.4 函数与类设计
+- 函数应保持小而内聚
+- 避免隐藏副作用
+- 在可能的情况下，转换类逻辑优先使用纯函数
+- 仅当状态和行为天然属于同一个对象时才使用类
+- 构造函数应保持轻量；避免在 `__init__` 中执行重 IO 或网络调用
+- 对文件、锁和其他受管资源使用上下文管理器
 
-### 8.6 Python Pitfalls to Avoid
-- Do not use mutable default arguments
-- Do not rely on implicit truthiness when it hides domain meaning
-- Avoid dynamic attribute creation unless the pattern is deliberate and documented
-- Avoid large blocks of top-level executable code; use functions and `if __name__ == "__main__":` for scripts
-- Prefer comprehensions only when they remain readable
+### 8.5 错误处理与日志
+- 捕获具体异常，绝不要使用裸 `except:`
+- 抛出的异常信息应有助于定位和诊断问题
+- 除非有明确恢复策略，否则不要吞掉异常
+- 对非平凡运行时诊断使用 `logging`，不要使用 `print`
+- 尽早校验外部输入
 
-### 8.7 Testing
-- Add or update tests for non-trivial Python logic
-- Prefer `pytest` style if the repository already uses it; otherwise follow the local test framework
-- Test boundary conditions and invalid inputs, not only happy paths
+### 8.6 需要避免的 Python 陷阱
+- 不要使用可变默认参数
+- 不要在会掩盖领域语义时依赖隐式真值判断
+- 除非模式是有意且已记录的，否则避免动态创建属性
+- 避免大段顶层可执行代码；脚本应使用函数和 `if __name__ == "__main__":`
+- 仅在保持可读性时才优先使用推导式
 
-## 9. AI Execution Rules
-- Before writing code, inspect nearby files and follow the dominant local style
-- Preserve existing architecture unless the task requires structural change
-- Do not introduce speculative abstractions, premature optimization, or unnecessary indirection
-- When modifying code, also update tests, documentation, or configuration if they are directly affected
-- Do not rewrite large sections just to satisfy style preferences
-- Prefer the smallest correct change that fully solves the problem
-- If a rule conflicts with the existing codebase convention, follow the existing codebase convention
+### 8.7 测试
+- 为非平凡 Python 逻辑补充或更新测试
+- 如果仓库已使用 `pytest` 风格则优先沿用，否则遵循本地测试框架
+- 测试应覆盖边界条件和非法输入，而不仅仅是正常路径
 
-## 10. Output Quality Standard for AI
-- Generated code must compile or run in principle within the project's toolchain and dependency set
-- Generated code must be complete enough to integrate directly into the repository
-- Generated code must avoid placeholders such as `TODO`, `fixme`, or pseudo-code unless the user explicitly requests a draft
-- Generated code should include concise comments only where the intent is not obvious from the code itself
+## 9. AI 执行规则
+- 写代码前先查看相邻文件，并遵循局部主流风格
+- 除非任务要求结构性调整，否则保持现有架构不变
+- 不要引入臆测性的抽象、过早优化或不必要的间接层
+- 修改代码时，如果测试、文档或配置被直接影响，也要一并更新
+- 不要仅仅为了满足风格偏好而重写大段代码
+- 优先选择能完整解决问题的最小正确改动
+- 如果某条规则与现有代码库约定冲突，应遵循现有代码库约定
+
+## 10. AI 输出质量标准
+- 生成的代码原则上必须能够在项目现有工具链和依赖集合内编译或运行
+- 生成的代码必须完整到可以直接集成进仓库
+- 除非用户明确要求草稿，否则生成代码中不得包含 `TODO`、`fixme` 或伪代码等占位内容
+- 仅在代码意图无法从实现本身直接看出时，才添加简洁注释
 
