@@ -67,7 +67,7 @@ int32_t drvUartLogWrite(const uint8_t *buffer, uint16_t length)
         return 0;
     }
 
-    if (drvUartTransmit(DRVUART_DEBUG, buffer, length, 100U) != DRVUART_STATUS_OK) {
+    if (drvUartTransmitDma(DRVUART_DEBUG, buffer, length) != DRVUART_STATUS_OK) {
         return 0;
     }
 

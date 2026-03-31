@@ -8,14 +8,14 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "drvgpio.h"
-#include "string.h"
+#include "bspgpio.h"
 
 
 stDrvGpioBspInterface gDrvGpioBspInterface = {
-    .init = NULL,
-    .write = NULL,
-    .read = NULL,
-    .toggle = NULL,
+    .init = bspGpioInit,
+    .write = bspGpioWrite,
+    .read = bspGpioRead,
+    .toggle = bspGpioToggle,
 };
 
 /**************************End of file********************************/

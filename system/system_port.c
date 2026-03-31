@@ -69,7 +69,7 @@ void defaultTaskCallback(void *parameter)
 
     for (;;) {
         gpio_bit_toggle(STATUS_LED_GPIO_PORT, STATUS_LED_PIN);
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_DEFAULT_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(DEFAULT_TASK_PERIOD_MS));
     }
 }
 
@@ -84,7 +84,7 @@ void systemTaskCallback(void *parameter)
 
     for (;;) {
         process();
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_SYSTEM_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(SYSTEM_TASK_PERIOD_MS));
     }
 }
 
@@ -121,28 +121,28 @@ static void createTasks(void)
 {
     (void)createTask(sensorTaskCallback,
         "SensorTask",
-        SYSTEM_PORT_SENSOR_TASK_STACK_SIZE,
-        SYSTEM_PORT_SENSOR_TASK_PRIORITY,
+        SENSOR_TASK_STACK_SIZE,
+        SENSOR_TASK_PRIORITY,
         &gSensorTaskHandle);
     (void)createTask(consoleTaskCallback,
         "ConsoleTask",
-        SYSTEM_PORT_CONSOLE_TASK_STACK_SIZE,
-        SYSTEM_PORT_CONSOLE_TASK_PRIORITY,
+        CONSOLE_TASK_STACK_SIZE,
+        CONSOLE_TASK_PRIORITY,
         &gConsoleTaskHandle);
     (void)createTask(guardTaskCallback,
         "GuardTask",
-        SYSTEM_PORT_GUARD_TASK_STACK_SIZE,
-        SYSTEM_PORT_GUARD_TASK_PRIORITY,
+        GUARD_TASK_STACK_SIZE,
+        GUARD_TASK_PRIORITY,
         &gGuardTaskHandle);
     (void)createTask(powerTaskCallback,
         "PowerTask",
-        SYSTEM_PORT_POWER_TASK_STACK_SIZE,
-        SYSTEM_PORT_POWER_TASK_PRIORITY,
+        POWER_TASK_STACK_SIZE,
+        POWER_TASK_PRIORITY,
         &gPowerTaskHandle);
     (void)createTask(memoryTaskCallback,
         "MemoryTask",
-        SYSTEM_PORT_MEMORY_TASK_STACK_SIZE,
-        SYSTEM_PORT_MEMORY_TASK_PRIORITY,
+        MEMORY_TASK_STACK_SIZE,
+        MEMORY_TASK_PRIORITY,
         &gMemoryTaskHandle);
 }
 
@@ -151,7 +151,7 @@ static void sensorTaskCallback(void *parameter)
     (void)parameter;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_SENSOR_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(SENSOR_TASK_PERIOD_MS));
     }
 }
 
@@ -160,7 +160,7 @@ static void consoleTaskCallback(void *parameter)
     (void)parameter;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_CONSOLE_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(CONSOLE_TASK_PERIOD_MS));
     }
 }
 
@@ -169,7 +169,7 @@ static void guardTaskCallback(void *parameter)
     (void)parameter;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_GUARD_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(GUARD_TASK_PERIOD_MS));
     }
 }
 
@@ -178,7 +178,7 @@ static void powerTaskCallback(void *parameter)
     (void)parameter;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_POWER_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(POWER_TASK_PERIOD_MS));
     }
 }
 
@@ -187,7 +187,7 @@ static void memoryTaskCallback(void *parameter)
     (void)parameter;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_MEMORY_TASK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(MEMORY_TASK_PERIOD_MS));
     }
 }
 /**************************End of file********************************/

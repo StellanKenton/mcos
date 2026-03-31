@@ -30,7 +30,7 @@ extern stDrvGpioBspInterface gDrvGpioBspInterface;
 **/
 static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 {
-    return (pin >= 0) && (pin < DRVGPIO_MAX);
+    return pin < DRVGPIO_MAX;
 }
 
 /**

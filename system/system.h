@@ -22,8 +22,6 @@ extern "C" {
 #define SYSTEM_STRINGIFY_IMPL(value)    #value
 #define SYSTEM_STRINGIFY(value)         SYSTEM_STRINGIFY_IMPL(value)
 
-#define SYSTEM_TASK_PERIOD_MS           1000U
-
 #define FW_VER_MAJOR            0
 #define FW_VER_MINOR            0
 #define FW_VER_PATCH            1

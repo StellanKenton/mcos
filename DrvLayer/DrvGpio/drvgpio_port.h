@@ -25,10 +25,10 @@ typedef enum eDrvGpioPinState {
 } eDrvGpioPinState;
 
 typedef enum eDrvGpioPinMap {
-    DRVGPIO_LEDR = 0,
-    DRVGPIO_LEDG,
-    DRVGPIO_LEDB,
-    DRVGPIO_KEY1,
+    DRVGPIO_LEDR = 0,       // pe4
+    DRVGPIO_LEDG,           // pe5
+    DRVGPIO_LEDB,           // pe6
+    DRVGPIO_KEY1,           // pe3
     DRVGPIO_MAX,
 } eDrvGpioPinMap;
 
