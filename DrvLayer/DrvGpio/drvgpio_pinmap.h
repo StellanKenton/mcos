@@ -15,15 +15,20 @@
 extern "C" {
 #endif
 
+typedef enum eDrvGpioPinState {
+    DRVGPIO_PIN_RESET = 0,
+    DRVGPIO_PIN_SET,
+    DRVGPIO_PIN_STATE_INVALID
+} eDrvGpioPinState;
+
 typedef enum eDrvGpioPinMap {
-    DRVGPIO_LED0,
+    DRVGPIO_LEDR = 0,
+    DRVGPIO_LEDG,
+    DRVGPIO_LEDB,
+    DRVGPIO_KEY1,
     DRVGPIO_MAX,
 } eDrvGpioPinMap;
 
-const char* g_gpioPinNames[DRVGPIO_MAX] = {
-    "led0",
-    "max",
-};
 #ifdef __cplusplus
 }
 #endif

@@ -7,10 +7,25 @@
 * @version  : V1.0.0
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
+#if (DRVGPIO_LOG_SUPPORT == 1)
+#include "log.h"
+#endif
+#if (DRVGPIO_CONSOLE_SUPPORT == 1)
+#include "console.h"
+#endif
+
 #include "drvgpio.h"
+#include <stdbool.h>
 #include <stddef.h>
 
-eDrvGpioPinState g_gpioPinStates[DRVGPIO_MAX] = {0}; 
+
+#include "bsp_gpio.h"
+static stDrvGpioBspInterface gDrvGpioBspInterface = {
+    .init = bspGpioInit,
+    .write = bspGpioWrite,
+    .read = bspGpioRead,
+    .toggle = bspGpioToggle,
+};
 
 /**
 * @brief : Check if the provided logical pin mapping is valid.
@@ -19,7 +34,20 @@ eDrvGpioPinState g_gpioPinStates[DRVGPIO_MAX] = {0};
 **/
 static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 {
-	return (pin >= 0) && (pin < DRVGPIO_MAX);
+    return (pin >= 0) && (pin < DRVGPIO_MAX);
+}
+
+/**
+* @brief : Check whether the BSP hook table is complete.
+* @param : None
+* @return: true when all required hooks are available.
+**/
+static bool drvGpioHasValidBspInterface(void)
+{
+    return (gDrvGpioBspInterface.init != NULL) &&
+           (gDrvGpioBspInterface.write != NULL) &&
+           (gDrvGpioBspInterface.read != NULL) &&
+           (gDrvGpioBspInterface.toggle != NULL);
 }
 
 /**
@@ -29,9 +57,24 @@ static bool drvGpioIsValidPin(eDrvGpioPinMap pin)
 **/
 void drvGpioInit(void)
 {
-/*************************Bsp Area***********************/
+    int lPinIndex;
 
-/*******************************************************/
+    if (!drvGpioHasValidBspInterface()) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "Invalid BSP interface configuration");
+        LOG_E(DRVGPIO_LOG_TAG, "Please ensure all BSP function hooks are properly assigned");
+        #endif
+        return;
+    }
+
+    // bsp init function
+    gDrvGpioBspInterface.init();
+
+    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
+    for (lPinIndex = 0; lPinIndex < (int)DRVGPIO_MAX; ++lPinIndex) {
+        gDrvGpioBspInterface.pinStates[lPinIndex] = gDrvGpioBspInterface.read((eDrvGpioPinMap)lPinIndex);
+    }
+    #endif
 }
 
 /**
@@ -43,13 +86,26 @@ void drvGpioInit(void)
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 {
     if (!drvGpioIsValidPin(pin)) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "Invalid GPIO pin: %d", pin);
+        #endif
         return;
     }
-    g_gpioPinStates[pin] = state;
 
-/*************************Bsp Area***********************/
+    if ((state != DRVGPIO_PIN_RESET) && (state != DRVGPIO_PIN_SET)) {
+        return;
+    }
 
-/*******************************************************/
+    if (gDrvGpioBspInterface.write == NULL) {
+        return;
+    }
+
+    // bsp write function
+    gDrvGpioBspInterface.write(pin, state);
+
+    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
+    gDrvGpioBspInterface.pinStates[pin] = state;
+    #endif
 }
 
 /**
@@ -59,15 +115,23 @@ void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 **/
 eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 {
-    eDrvGpioPinState state;
+    eDrvGpioPinState lState;
+
     if (!drvGpioIsValidPin(pin)) {
         return DRVGPIO_PIN_STATE_INVALID;
     }
-/*************************Bsp Area***********************/
 
-/*******************************************************/
-    g_gpioPinStates[pin] = state;
-    return state;
+    if (gDrvGpioBspInterface.read == NULL) {
+        return DRVGPIO_PIN_STATE_INVALID;
+    }
+
+    // bsp read function
+    lState = gDrvGpioBspInterface.read(pin);
+
+    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
+    gDrvGpioBspInterface.pinStates[pin] = lState;
+    #endif
+    return lState;
 }
 
 /**
@@ -77,13 +141,26 @@ eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 **/
 void drvGpioToggle(eDrvGpioPinMap pin)
 {
+    eDrvGpioPinState lTargetState;
+
     if (!drvGpioIsValidPin(pin)) {
         return;
     }
-/*************************Bsp Area***********************/
 
-/*******************************************************/
-    g_gpioPinStates[pin] = (g_gpioPinStates[pin] == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET: DRVGPIO_PIN_SET;
+    if (gDrvGpioBspInterface.toggle == NULL) {
+        lTargetState = (drvGpioRead(pin) == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET : DRVGPIO_PIN_SET;
+        drvGpioWrite(pin, lTargetState);
+        return;
+    }
+
+    // bsp toggle function 
+    gDrvGpioBspInterface.toggle(pin);
+    
+    #if (DRVGPIO_CONSOLE_SUPPORT == 1)  
+    gDrvGpioBspInterface.pinStates[pin] =
+        (gDrvGpioBspInterface.pinStates[pin] == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET : DRVGPIO_PIN_SET;  
+    #endif
+    }
 }
 
 

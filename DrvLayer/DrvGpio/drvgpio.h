@@ -17,10 +17,24 @@
 extern "C" {
 #endif
 
-typedef enum eDrvGpioPinState {
-    DRVGPIO_PIN_RESET = 0,
-    DRVGPIO_PIN_SET
-} eDrvGpioPinState;
+#define DRVGPIO_LOG_SUPPORT             1
+#define DRVGPIO_LOG_TAG                 "drvGpio"
+
+#define DRVGPIO_CONSOLE_SUPPORT         1
+
+
+typedef void (*drvGpioBspInitFunc)(void);
+typedef void (*drvGpioBspWriteFunc)(eDrvGpioPinMap pin, eDrvGpioPinState state);
+typedef eDrvGpioPinState (*drvGpioBspReadFunc)(eDrvGpioPinMap pin);
+typedef void (*drvGpioBspToggleFunc)(eDrvGpioPinMap pin);
+
+typedef struct stDrvGpioBspInterface {
+    eDrvGpioPinState pinStates[DRVGPIO_MAX];
+    drvGpioBspInitFunc init;
+    drvGpioBspWriteFunc write;
+    drvGpioBspReadFunc read;
+    drvGpioBspToggleFunc toggle;
+} stDrvGpioBspInterface;
 
 void drvGpioInit(void);
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state);
