@@ -11,12 +11,14 @@
 #define DRVUART_H
 
 #include <stdint.h>
-#include "drvuart_portmap.h"
+#include "drvuart_port.h"
 #include "ringbuffer.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define DRVUART_BSP_SYNC_CHUNK_SIZE    256U
 
 #define DRVUART_RECVLEN_DEBUGUART    1024U
 
@@ -29,6 +31,31 @@ typedef enum eDrvUartStatus {
     DRVUART_STATUS_UNSUPPORTED,
     DRVUART_STATUS_ERROR,
 } eDrvUartStatus;
+
+typedef eDrvUartStatus (*drvUartBspInitFunc)(eDrvUartPortMap uart);
+typedef eDrvUartStatus (*drvUartBspTransmitFunc)(eDrvUartPortMap uart,
+                                                 const uint8_t *buffer,
+                                                 uint16_t length,
+                                                 uint32_t timeoutMs);
+typedef eDrvUartStatus (*drvUartBspTransmitItFunc)(eDrvUartPortMap uart,
+                                                   const uint8_t *buffer,
+                                                   uint16_t length);
+typedef eDrvUartStatus (*drvUartBspTransmitDmaFunc)(eDrvUartPortMap uart,
+                                                    const uint8_t *buffer,
+                                                    uint16_t length);
+typedef uint16_t (*drvUartBspGetDataLenFunc)(eDrvUartPortMap uart);
+typedef eDrvUartStatus (*drvUartBspReceiveFunc)(eDrvUartPortMap uart,
+                                                uint8_t *buffer,
+                                                uint16_t length);
+
+typedef struct stDrvUartBspInterface {
+    drvUartBspInitFunc init;
+    drvUartBspTransmitFunc transmit;
+    drvUartBspTransmitItFunc transmitIt;
+    drvUartBspTransmitDmaFunc transmitDma;
+    drvUartBspGetDataLenFunc getDataLen;
+    drvUartBspReceiveFunc receive;
+} stDrvUartBspInterface;
 
 eDrvUartStatus drvUartInit(eDrvUartPortMap uart);
 eDrvUartStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);

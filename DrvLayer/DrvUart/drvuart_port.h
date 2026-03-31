@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 typedef enum eDrvUartPortMap {
-    DRVUART_DEBUG = 0,
+    DRVUART_DEBUG = 0,      // PA9 PA10
     DRVUART_MAX,
 } eDrvUartPortMap;
 
