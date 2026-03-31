@@ -21,20 +21,20 @@ static TaskHandle_t gGuardTaskHandle = NULL;
 static TaskHandle_t gPowerTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
 
-static void systemPortProcess(void);
-static BaseType_t systemPortCreateTask(TaskFunction_t taskFunction,
+static void process(void);
+static BaseType_t createTask(TaskFunction_t taskFunction,
     const char *taskName,
     configSTACK_DEPTH_TYPE stackDepth,
     UBaseType_t taskPriority,
     TaskHandle_t *taskHandle);
-static void systemPortSensorTaskCallback(void *parameter);
-static void systemPortConsoleTaskCallback(void *parameter);
-static void systemPortGuardTaskCallback(void *parameter);
-static void systemPortPowerTaskCallback(void *parameter);
-static void systemPortMemoryTaskCallback(void *parameter);
-static void systemPortCreateTasks(void);
+static void sensorTaskCallback(void *parameter);
+static void consoleTaskCallback(void *parameter);
+static void guardTaskCallback(void *parameter);
+static void powerTaskCallback(void *parameter);
+static void memoryTaskCallback(void *parameter);
+static void createTasks(void);
 
-static void systemPortProcess(void)
+static void process(void)
 {
     switch (systemGetMode()) {
         case eSYSTEM_INIT_MODE:
@@ -44,7 +44,7 @@ static void systemPortProcess(void)
         case eSYSTEM_SELF_CHECK_MODE:  
             LOG_I(SYSTEM_TAG, "Self-check passed");
             systemSetMode(eSYSTEM_STANDBY_MODE);
-            systemPortCreateTasks();
+            createTasks();
             break;
         case eSYSTEM_STANDBY_MODE:
             break;
@@ -63,7 +63,7 @@ static void systemPortProcess(void)
 * @param : parameter - task parameter, unused.
 * @return: None
 **/
-void systemPortDefaultTaskCallback(void *parameter)
+void defaultTaskCallback(void *parameter)
 {
     (void)parameter;
 
@@ -78,17 +78,17 @@ void systemPortDefaultTaskCallback(void *parameter)
 * @param : parameter - task parameter, unused.
 * @return: None
 **/
-void systemPortSystemTaskCallback(void *parameter)
+void systemTaskCallback(void *parameter)
 {
     (void)parameter;
 
     for (;;) {
-        systemPortProcess();
+        process();
         vTaskDelay(pdMS_TO_TICKS(SYSTEM_PORT_SYSTEM_TASK_PERIOD_MS));
     }
 }
 
-static BaseType_t systemPortCreateTask(TaskFunction_t taskFunction,
+static BaseType_t createTask(TaskFunction_t taskFunction,
     const char *taskName,
     configSTACK_DEPTH_TYPE stackDepth,
     UBaseType_t taskPriority,
@@ -117,36 +117,36 @@ static BaseType_t systemPortCreateTask(TaskFunction_t taskFunction,
     return lReturn;
 }
 
-static void systemPortCreateTasks(void)
+static void createTasks(void)
 {
-    (void)systemPortCreateTask(systemPortSensorTaskCallback,
+    (void)createTask(sensorTaskCallback,
         "SensorTask",
         SYSTEM_PORT_SENSOR_TASK_STACK_SIZE,
         SYSTEM_PORT_SENSOR_TASK_PRIORITY,
         &gSensorTaskHandle);
-    (void)systemPortCreateTask(systemPortConsoleTaskCallback,
+    (void)createTask(consoleTaskCallback,
         "ConsoleTask",
         SYSTEM_PORT_CONSOLE_TASK_STACK_SIZE,
         SYSTEM_PORT_CONSOLE_TASK_PRIORITY,
         &gConsoleTaskHandle);
-    (void)systemPortCreateTask(systemPortGuardTaskCallback,
+    (void)createTask(guardTaskCallback,
         "GuardTask",
         SYSTEM_PORT_GUARD_TASK_STACK_SIZE,
         SYSTEM_PORT_GUARD_TASK_PRIORITY,
         &gGuardTaskHandle);
-    (void)systemPortCreateTask(systemPortPowerTaskCallback,
+    (void)createTask(powerTaskCallback,
         "PowerTask",
         SYSTEM_PORT_POWER_TASK_STACK_SIZE,
         SYSTEM_PORT_POWER_TASK_PRIORITY,
         &gPowerTaskHandle);
-    (void)systemPortCreateTask(systemPortMemoryTaskCallback,
+    (void)createTask(memoryTaskCallback,
         "MemoryTask",
         SYSTEM_PORT_MEMORY_TASK_STACK_SIZE,
         SYSTEM_PORT_MEMORY_TASK_PRIORITY,
         &gMemoryTaskHandle);
 }
 
-static void systemPortSensorTaskCallback(void *parameter)
+static void sensorTaskCallback(void *parameter)
 {
     (void)parameter;
 
@@ -155,7 +155,7 @@ static void systemPortSensorTaskCallback(void *parameter)
     }
 }
 
-static void systemPortConsoleTaskCallback(void *parameter)
+static void consoleTaskCallback(void *parameter)
 {
     (void)parameter;
 
@@ -164,7 +164,7 @@ static void systemPortConsoleTaskCallback(void *parameter)
     }
 }
 
-static void systemPortGuardTaskCallback(void *parameter)
+static void guardTaskCallback(void *parameter)
 {
     (void)parameter;
 
@@ -173,7 +173,7 @@ static void systemPortGuardTaskCallback(void *parameter)
     }
 }
 
-static void systemPortPowerTaskCallback(void *parameter)
+static void powerTaskCallback(void *parameter)
 {
     (void)parameter;
 
@@ -182,7 +182,7 @@ static void systemPortPowerTaskCallback(void *parameter)
     }
 }
 
-static void systemPortMemoryTaskCallback(void *parameter)
+static void memoryTaskCallback(void *parameter)
 {
     (void)parameter;
 

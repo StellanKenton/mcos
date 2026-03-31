@@ -99,6 +99,4 @@ const char *systemGetHardwareVersion(void)
 }
 
 
-
-
 /**************************End of file********************************/

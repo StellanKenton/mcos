@@ -24,13 +24,13 @@ extern "C" {
 
 #define SYSTEM_TASK_PERIOD_MS           1000U
 
-#define FW_VER_MAJOR            1
+#define FW_VER_MAJOR            0
 #define FW_VER_MINOR            0
-#define FW_VER_PATCH            0
+#define FW_VER_PATCH            1
 
-#define HW_VER_MAJOR            1
+#define HW_VER_MAJOR            0
 #define HW_VER_MINOR            0
-#define HW_VER_PATCH            0
+#define HW_VER_PATCH            1
 
 #define FIRMWARE_VERSION        "SoftVer" SYSTEM_STRINGIFY(FW_VER_MAJOR) "." SYSTEM_STRINGIFY(FW_VER_MINOR) "." SYSTEM_STRINGIFY(FW_VER_PATCH)
 #define HARDWARE_VERSION        "HardVer" SYSTEM_STRINGIFY(HW_VER_MAJOR) "." SYSTEM_STRINGIFY(HW_VER_MINOR) "." SYSTEM_STRINGIFY(HW_VER_PATCH)
