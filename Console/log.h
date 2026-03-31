@@ -13,7 +13,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-#include "sdkconfig.h"
+#include "rep_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +28,7 @@ typedef enum eLogLevel {
 } eLogLevel;
 
 #ifndef LOG_COMPILED_LEVEL
-#define LOG_COMPILED_LEVEL CONFIG_LOG_MAXIMUM_LEVEL
+#define LOG_COMPILED_LEVEL REP_LOG_LEVEL
 #endif
 
 void logWrite(eLogLevel level, const char *tag, const char *format, ...) __attribute__((format(printf, 3, 4)));

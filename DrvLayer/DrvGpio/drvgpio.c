@@ -7,14 +7,15 @@
 * @version  : V1.0.0
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
+#include "drvgpio.h"
+
 #if (DRVGPIO_LOG_SUPPORT == 1)
-#include "log.h"
+#include "../../Console/log.h"
 #endif
 #if (DRVGPIO_CONSOLE_SUPPORT == 1)
 #include "console.h"
 #endif
 
-#include "drvgpio.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -57,8 +58,6 @@ static bool drvGpioHasValidBspInterface(void)
 **/
 void drvGpioInit(void)
 {
-    int lPinIndex;
-
     if (!drvGpioHasValidBspInterface()) {
         #if (DRVGPIO_LOG_SUPPORT == 1)
         LOG_E(DRVGPIO_LOG_TAG, "Invalid BSP interface configuration");
@@ -71,6 +70,8 @@ void drvGpioInit(void)
     gDrvGpioBspInterface.init();
 
     #if (DRVGPIO_CONSOLE_SUPPORT == 1)
+    int lPinIndex;
+
     for (lPinIndex = 0; lPinIndex < (int)DRVGPIO_MAX; ++lPinIndex) {
         gDrvGpioBspInterface.pinStates[lPinIndex] = gDrvGpioBspInterface.read((eDrvGpioPinMap)lPinIndex);
     }
@@ -160,7 +161,6 @@ void drvGpioToggle(eDrvGpioPinMap pin)
     gDrvGpioBspInterface.pinStates[pin] =
         (gDrvGpioBspInterface.pinStates[pin] == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET : DRVGPIO_PIN_SET;  
     #endif
-    }
 }
 
 

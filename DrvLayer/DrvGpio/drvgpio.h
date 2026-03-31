@@ -11,7 +11,7 @@
 #define DRVGPIO_H
 
 #include <stdint.h>
-#include "drvgpio_pinmap.h"
+#include "drvgpio_port.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,7 +20,7 @@ extern "C" {
 #define DRVGPIO_LOG_SUPPORT             1
 #define DRVGPIO_LOG_TAG                 "drvGpio"
 
-#define DRVGPIO_CONSOLE_SUPPORT         1
+#define DRVGPIO_CONSOLE_SUPPORT         0
 
 
 typedef void (*drvGpioBspInitFunc)(void);

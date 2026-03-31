@@ -1,5 +1,5 @@
 /************************************************************************************
-* @file     : drvgpio_pinmap.h
+* @file     : drvgpio_port.h
 * @brief    : Shared GPIO logical pin mapping definitions.
 * @details  : This file keeps the project-level logical GPIO enumeration independent
 *             from the driver interface declaration.
@@ -8,8 +8,8 @@
 * @version  : V1.0.0
 * @copyright: Copyright (c) 2050
 ***********************************************************************************/
-#ifndef DRVGPIO_PINMAP_H
-#define DRVGPIO_PINMAP_H
+#ifndef DRVGPIO_PORT_H
+#define DRVGPIO_PORT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,5 +33,5 @@ typedef enum eDrvGpioPinMap {
 }
 #endif
 
-#endif  // DRVGPIO_PINMAP_H
+#endif  // DRVGPIO_PORT_H
 /**************************End of file********************************/
