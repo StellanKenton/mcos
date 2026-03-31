@@ -37,21 +37,11 @@ typedef enum eLogLevel {
 #define LOG_LINE_BUFFER_SIZE 256U
 #endif
 
-#ifndef LOG_TRANSPORT_NONE
-#define LOG_TRANSPORT_NONE 0x00U
-#endif
-
-#ifndef LOG_TRANSPORT_RTT
-#define LOG_TRANSPORT_RTT 0x01U
-#endif
-
-#ifndef LOG_TRANSPORT_UART
-#define LOG_TRANSPORT_UART 0x02U
-#endif
-
-#ifndef LOG_TRANSPORT_CAN
-#define LOG_TRANSPORT_CAN 0x03U
-#endif
+#define LOG_TRANSPORT_NONE      0x00U
+#define LOG_TRANSPORT_RTT       0x01U
+#define LOG_TRANSPORT_UART      0x02U
+#define LOG_TRANSPORT_CAN       0x03U
+#define LOG_TRANSPORT_ESP32     0x04U
 
 typedef uint32_t (*logTimestampProvider)(void);
 typedef void (*logInitFunc)(void);

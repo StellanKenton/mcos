@@ -17,11 +17,6 @@
 extern "C" {
 #endif
 
-#define DRVGPIO_LOG_SUPPORT             1
-#define DRVGPIO_LOG_TAG                 "drvGpio"
-
-#define DRVGPIO_CONSOLE_SUPPORT         0
-
 
 typedef void (*drvGpioBspInitFunc)(void);
 typedef void (*drvGpioBspWriteFunc)(eDrvGpioPinMap pin, eDrvGpioPinState state);

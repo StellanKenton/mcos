@@ -15,6 +15,11 @@
 extern "C" {
 #endif
 
+#define DRVGPIO_LOG_SUPPORT             1
+#define DRVGPIO_CONSOLE_SUPPORT         0
+
+#define DRVUART_RECVLEN_DEBUGUART    1024U
+
 typedef enum eDrvUartPortMapTable {
     DRVUART_DEBUG = 0,      // PA9 PA10
     DRVUART_MAX,

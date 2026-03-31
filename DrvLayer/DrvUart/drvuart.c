@@ -12,20 +12,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "bsp_uart.h"
-
-static stRingBuffer gUartRxBuffer[DRVUART_MAX];
-static uint8_t gUartRxStorageDebug[DRVUART_RECVLEN_DEBUGUART];
 static bool gDrvUartInitialized[DRVUART_MAX];
 
-static stDrvUartBspInterface gDrvUartBspInterface = {
-    .init = bspUartInit,
-    .transmit = bspUartTransmit,
-    .transmitIt = bspUartTransmitIt,
-    .transmitDma = bspUartTransmitDma,
-    .getDataLen = bspUartGetDataLen,
-    .receive = bspUartReceive,
-};
+extern stDrvUartBspInterface gDrvUartBspInterface[DRVUART_MAX];
+extern stRingBuffer *drvUartPortGetRingBuffer(eDrvUartPortMap uart);
+extern eDrvUartStatus drvUartPortGetStorageConfig(eDrvUartPortMap uart, uint8_t **storage, uint32_t *capacity);
 
 /**
 * @brief : Check if the provided logical UART mapping is valid.
@@ -38,16 +29,33 @@ static bool drvUartIsValid(eDrvUartPortMap uart)
 }
 
 /**
+* @brief : Get the BSP interface entry for a logical UART.
+* @param : uart UART mapping identifier.
+* @return: Pointer to the BSP interface entry, or NULL when invalid.
+**/
+static stDrvUartBspInterface *drvUartGetBspInterface(eDrvUartPortMap uart)
+{
+    if (!drvUartIsValid(uart)) {
+        return NULL;
+    }
+
+    return &gDrvUartBspInterface[uart];
+}
+
+/**
 * @brief : Check whether the BSP hook table is complete for basic UART usage.
 * @param : None
 * @return: true when required hooks are available.
 **/
-static bool drvUartHasValidBspInterface(void)
+static bool drvUartHasValidBspInterface(eDrvUartPortMap uart)
 {
-    return (gDrvUartBspInterface.init != NULL) &&
-           (gDrvUartBspInterface.transmit != NULL) &&
-           (gDrvUartBspInterface.getDataLen != NULL) &&
-           (gDrvUartBspInterface.receive != NULL);
+    stDrvUartBspInterface *lBspInterface = drvUartGetBspInterface(uart);
+
+    return (lBspInterface != NULL) &&
+           (lBspInterface->init != NULL) &&
+           (lBspInterface->transmit != NULL) &&
+           (lBspInterface->getDataLen != NULL) &&
+           (lBspInterface->receive != NULL);
 }
 
 /**
@@ -72,31 +80,6 @@ static bool drvUartIsInitialized(eDrvUartPortMap uart)
 }
 
 /**
-* @brief : Resolve the receive storage buffer for a logical UART.
-* @param : uart     UART mapping identifier.
-* @param : storage  Output pointer to storage buffer.
-* @param : capacity Output storage capacity.
-* @return: UART operation status.
-**/
-static eDrvUartStatus drvUartGetStorageConfig(eDrvUartPortMap uart, uint8_t **storage, uint32_t *capacity)
-{
-    if ((storage == NULL) || (capacity == NULL)) {
-        return DRVUART_STATUS_INVALID_PARAM;
-    }
-
-    switch (uart) {
-        case DRVUART_DEBUG:
-            *storage = gUartRxStorageDebug;
-            *capacity = DRVUART_RECVLEN_DEBUGUART;
-            return DRVUART_STATUS_OK;
-        default:
-            *storage = NULL;
-            *capacity = 0U;
-            return DRVUART_STATUS_UNSUPPORTED;
-    }
-}
-
-/**
 * @brief : Pull pending bytes from BSP RX storage into the drv ring buffer.
 * @param : uart UART mapping identifier.
 * @return: UART operation status.
@@ -105,6 +88,7 @@ static eDrvUartStatus drvUartSyncRxData(eDrvUartPortMap uart)
 {
     uint8_t lScratch[DRVUART_BSP_SYNC_CHUNK_SIZE];
     stRingBuffer *lRingBuffer = NULL;
+    stDrvUartBspInterface *lBspInterface = NULL;
     uint32_t lRingFree = 0U;
     uint16_t lPending = 0U;
 
@@ -112,13 +96,18 @@ static eDrvUartStatus drvUartSyncRxData(eDrvUartPortMap uart)
         return DRVUART_STATUS_NOT_READY;
     }
 
-    if ((gDrvUartBspInterface.getDataLen == NULL) || (gDrvUartBspInterface.receive == NULL)) {
+    lBspInterface = drvUartGetBspInterface(uart);
+    if ((lBspInterface == NULL) || (lBspInterface->getDataLen == NULL) || (lBspInterface->receive == NULL)) {
         return DRVUART_STATUS_NOT_READY;
     }
 
-    lRingBuffer = &gUartRxBuffer[uart];
+    lRingBuffer = drvUartPortGetRingBuffer(uart);
+    if (lRingBuffer == NULL) {
+        return DRVUART_STATUS_ERROR;
+    }
+
     lRingFree = ringBufferGetFree(lRingBuffer);
-    lPending = gDrvUartBspInterface.getDataLen(uart);
+    lPending = lBspInterface->getDataLen(uart);
 
     while ((lPending > 0U) && (lRingFree > 0U)) {
         uint16_t lChunkLength = lPending;
@@ -131,7 +120,7 @@ static eDrvUartStatus drvUartSyncRxData(eDrvUartPortMap uart)
             lChunkLength = (uint16_t)lRingFree;
         }
 
-        if (gDrvUartBspInterface.receive(uart, lScratch, lChunkLength) != DRVUART_STATUS_OK) {
+        if (lBspInterface->receive(uart, lScratch, lChunkLength) != DRVUART_STATUS_OK) {
             return DRVUART_STATUS_ERROR;
         }
 
@@ -140,7 +129,7 @@ static eDrvUartStatus drvUartSyncRxData(eDrvUartPortMap uart)
         }
 
         lRingFree -= lChunkLength;
-        lPending = gDrvUartBspInterface.getDataLen(uart);
+        lPending = lBspInterface->getDataLen(uart);
     }
 
     return DRVUART_STATUS_OK;
@@ -156,27 +145,43 @@ eDrvUartStatus drvUartInit(eDrvUartPortMap uart)
     uint8_t *lStorage = NULL;
     uint32_t lCapacity = 0U;
     stRingBuffer *lRingBuffer = NULL;
+    stDrvUartBspInterface *lBspInterface = NULL;
     eDrvUartStatus lStatus;
 
     if (!drvUartIsValid(uart)) {
         return DRVUART_STATUS_INVALID_PARAM;
     }
 
-    if (!drvUartHasValidBspInterface()) {
+    if (!drvUartHasValidBspInterface(uart)) {
         return DRVUART_STATUS_NOT_READY;
     }
 
-    lStatus = drvUartGetStorageConfig(uart, &lStorage, &lCapacity);
+    lBspInterface = drvUartGetBspInterface(uart);
+    if (lBspInterface == NULL) {
+        return DRVUART_STATUS_NOT_READY;
+    }
+
+    lStatus = drvUartPortGetStorageConfig(uart, &lStorage, &lCapacity);
     if (lStatus != DRVUART_STATUS_OK) {
         return lStatus;
     }
 
-    lRingBuffer = &gUartRxBuffer[uart];
+    if (lBspInterface->Buffer == NULL) {
+        return DRVUART_STATUS_NOT_READY;
+    }
+
+    lStorage = lBspInterface->Buffer;
+
+    lRingBuffer = drvUartPortGetRingBuffer(uart);
+    if (lRingBuffer == NULL) {
+        return DRVUART_STATUS_ERROR;
+    }
+
     if (ringBufferInit(lRingBuffer, lStorage, lCapacity) != RINGBUFFER_OK) {
         return DRVUART_STATUS_ERROR;
     }
 
-    lStatus = gDrvUartBspInterface.init(uart);
+    lStatus = lBspInterface->init(uart);
     if (lStatus != DRVUART_STATUS_OK) {
         return lStatus;
     }
@@ -195,6 +200,8 @@ eDrvUartStatus drvUartInit(eDrvUartPortMap uart)
 **/
 eDrvUartStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
+    stDrvUartBspInterface *lBspInterface = NULL;
+
     if (!drvUartIsValid(uart) || !drvUartIsValidBuffer(buffer, length)) {
         return DRVUART_STATUS_INVALID_PARAM;
     }
@@ -203,11 +210,12 @@ eDrvUartStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint
         return DRVUART_STATUS_NOT_READY;
     }
 
-    if (gDrvUartBspInterface.transmit == NULL) {
+    lBspInterface = drvUartGetBspInterface(uart);
+    if ((lBspInterface == NULL) || (lBspInterface->transmit == NULL)) {
         return DRVUART_STATUS_NOT_READY;
     }
 
-    return gDrvUartBspInterface.transmit(uart, buffer, length, timeoutMs);
+    return lBspInterface->transmit(uart, buffer, length, timeoutMs);
 }
 
 /**
@@ -219,6 +227,8 @@ eDrvUartStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint
 **/
 eDrvUartStatus drvUartTransmitIt(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length)
 {
+    stDrvUartBspInterface *lBspInterface = NULL;
+
     if (!drvUartIsValid(uart) || !drvUartIsValidBuffer(buffer, length)) {
         return DRVUART_STATUS_INVALID_PARAM;
     }
@@ -227,11 +237,12 @@ eDrvUartStatus drvUartTransmitIt(eDrvUartPortMap uart, const uint8_t *buffer, ui
         return DRVUART_STATUS_NOT_READY;
     }
 
-    if (gDrvUartBspInterface.transmitIt == NULL) {
+    lBspInterface = drvUartGetBspInterface(uart);
+    if ((lBspInterface == NULL) || (lBspInterface->transmitIt == NULL)) {
         return DRVUART_STATUS_UNSUPPORTED;
     }
 
-    return gDrvUartBspInterface.transmitIt(uart, buffer, length);
+    return lBspInterface->transmitIt(uart, buffer, length);
 }
 
 /**
@@ -243,6 +254,8 @@ eDrvUartStatus drvUartTransmitIt(eDrvUartPortMap uart, const uint8_t *buffer, ui
 **/
 eDrvUartStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length)
 {
+    stDrvUartBspInterface *lBspInterface = NULL;
+
     if (!drvUartIsValid(uart) || !drvUartIsValidBuffer(buffer, length)) {
         return DRVUART_STATUS_INVALID_PARAM;
     }
@@ -251,11 +264,12 @@ eDrvUartStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, u
         return DRVUART_STATUS_NOT_READY;
     }
 
-    if (gDrvUartBspInterface.transmitDma == NULL) {
+    lBspInterface = drvUartGetBspInterface(uart);
+    if ((lBspInterface == NULL) || (lBspInterface->transmitDma == NULL)) {
         return DRVUART_STATUS_UNSUPPORTED;
     }
 
-    return gDrvUartBspInterface.transmitDma(uart, buffer, length);
+    return lBspInterface->transmitDma(uart, buffer, length);
 }
 
 /**
@@ -283,7 +297,11 @@ eDrvUartStatus drvUartReceive(eDrvUartPortMap uart, uint8_t *buffer, uint16_t le
         return lStatus;
     }
 
-    lRingBuffer = &gUartRxBuffer[uart];
+    lRingBuffer = drvUartPortGetRingBuffer(uart);
+    if (lRingBuffer == NULL) {
+        return DRVUART_STATUS_ERROR;
+    }
+
     if (ringBufferGetUsed(lRingBuffer) < (uint32_t)length) {
         return DRVUART_STATUS_NOT_READY;
     }
@@ -316,7 +334,7 @@ uint16_t drvUartGetDataLen(eDrvUartPortMap uart)
         return 0U;
     }
 
-    lUsed = ringBufferGetUsed(&gUartRxBuffer[uart]);
+    lUsed = ringBufferGetUsed(drvUartPortGetRingBuffer(uart));
     if (lUsed > UINT16_MAX) {
         return UINT16_MAX;
     }
@@ -335,7 +353,7 @@ stRingBuffer* drvUartGetRingBuffer(eDrvUartPortMap uart)
         return NULL;
     }
 
-    return &gUartRxBuffer[uart];
+    return drvUartPortGetRingBuffer(uart);
 }
 
 

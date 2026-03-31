@@ -20,9 +20,6 @@ extern "C" {
 
 #define DRVUART_BSP_SYNC_CHUNK_SIZE    256U
 
-#define DRVUART_RECVLEN_DEBUGUART    1024U
-
-
 typedef enum eDrvUartStatus {
     DRVUART_STATUS_OK = 0,
     DRVUART_STATUS_INVALID_PARAM,
@@ -55,6 +52,7 @@ typedef struct stDrvUartBspInterface {
     drvUartBspTransmitDmaFunc transmitDma;
     drvUartBspGetDataLenFunc getDataLen;
     drvUartBspReceiveFunc receive;
+    uint8_t *Buffer;
 } stDrvUartBspInterface;
 
 eDrvUartStatus drvUartInit(eDrvUartPortMap uart);
@@ -64,6 +62,9 @@ eDrvUartStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, u
 eDrvUartStatus drvUartReceive(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
 uint16_t drvUartGetDataLen(eDrvUartPortMap uart);
 stRingBuffer* drvUartGetRingBuffer(eDrvUartPortMap uart);
+void drvUartLogInit(void);
+int32_t drvUartLogWrite(const uint8_t *buffer, uint16_t length);
+stRingBuffer *drvUartLogGetInputBuffer(void);
 
 #ifdef __cplusplus
 }

@@ -19,14 +19,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define DRVGPIO_LOG_TAG                 "drvGpio"
 
-#include "bsp_gpio.h"
-static stDrvGpioBspInterface gDrvGpioBspInterface = {
-    .init = bspGpioInit,
-    .write = bspGpioWrite,
-    .read = bspGpioRead,
-    .toggle = bspGpioToggle,
-};
+extern stDrvGpioBspInterface gDrvGpioBspInterface;
 
 /**
 * @brief : Check if the provided logical pin mapping is valid.
