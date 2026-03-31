@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../../../SEGGER/bsp_rtt.h"
+#include "../../bsp_uart.h"
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
 #include "FreeRTOS.h"
@@ -51,6 +52,14 @@ static stLogInterface gLogInterfaces[] = {
         .init = bspRttLogInit,
         .write = bspRttLogWrite,
         .getBuffer = bspRttLogGetInputBuffer,
+        .isOutputEnabled = true,
+        .isInputEnabled = true,
+    },
+    {
+        .transport = LOG_TRANSPORT_UART,
+        .init = bspUartLogInit,
+        .write = bspUartLogWrite,
+        .getBuffer = bspUartLogGetInputBuffer,
         .isOutputEnabled = true,
         .isInputEnabled = true,
     },

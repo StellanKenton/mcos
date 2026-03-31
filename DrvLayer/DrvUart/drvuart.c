@@ -34,7 +34,7 @@ static stDrvUartBspInterface gDrvUartBspInterface = {
 **/
 static bool drvUartIsValid(eDrvUartPortMap uart)
 {
-    return (uart >= 0) && (uart < DRVUART_MAX);
+    return (uart < DRVUART_MAX);
 }
 
 /**

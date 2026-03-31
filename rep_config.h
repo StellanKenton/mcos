@@ -36,7 +36,7 @@ extern "C" {
 #define REP_LOG_LEVEL_INFO            3
 #define REP_LOG_LEVEL_DEBUG           4
 
-#define REP_LOG_OUTPUT_PORT           0x01U         // number of log output interfaces
+#define REP_LOG_OUTPUT_PORT           0x02U         // number of active log interfaces
 
 #ifndef REP_LOG_LEVEL
 #define REP_LOG_LEVEL                 REP_LOG_LEVEL_INFO
