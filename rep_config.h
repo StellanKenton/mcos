@@ -10,7 +10,11 @@
 #ifndef REP_CONFIG_H
 #define REP_CONFIG_H
 
+#if defined(__has_include)
+#if __has_include("sdkconfig.h")
 #include "sdkconfig.h"
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,8 +26,9 @@ extern "C" {
 #define REP_MCU_PLATFORM_GD32         3
 
 #define REP_RTOS_FREERTOS             1
-#define REP_RTOS_RTTHREAD             2
-#define REP_RTOS_BAREMETAL            3
+#define REP_RTOS_UCOSII               2
+#define REP_RTOS_UCOSIII              3
+#define REP_RTOS_NONE                 4
 
 #define REP_LOG_LEVEL_NONE            0
 #define REP_LOG_LEVEL_ERROR           1
@@ -31,10 +36,19 @@ extern "C" {
 #define REP_LOG_LEVEL_INFO            3
 #define REP_LOG_LEVEL_DEBUG           4
 
-#define REP_LOG_LEVEL                 REP_LOG_LEVEL_INFO
+#define REP_LOG_OUTPUT_PORT           0x01U         // number of log output interfaces
 
-#define REP_MCU_PLATFORM              REP_MCU_PLATFORM_ESP32
+#ifndef REP_LOG_LEVEL
+#define REP_LOG_LEVEL                 REP_LOG_LEVEL_INFO
+#endif
+
+#ifndef REP_MCU_PLATFORM
+#define REP_MCU_PLATFORM              REP_MCU_PLATFORM_GD32
+#endif
+
+#ifndef REP_RTOS_SYSTEM
 #define REP_RTOS_SYSTEM               REP_RTOS_FREERTOS
+#endif
 
 
 #if (REP_MCU_PLATFORM == REP_MCU_PLATFORM_ESP32)

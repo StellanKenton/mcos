@@ -1,7 +1,7 @@
 /************************************************************************************
 * @file     : log.h
 * @brief    : Lightweight logging interface.
-* @details  : Provides unified LOG_I/LOG_E/LOG_W/LOG_D macros with low stack usage.
+* @details  : Provides unified LOG_I/LOG_E/LOG_W/LOG_D macros and fixed hook arrays.
 * @author   : \.rumi
 * @date     : 2026-03-31
 * @version  : V1.0.0
@@ -11,9 +11,11 @@
 #define LOG_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "rep_config.h"
+#include "ringbuffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +32,45 @@ typedef enum eLogLevel {
 #ifndef LOG_COMPILED_LEVEL
 #define LOG_COMPILED_LEVEL REP_LOG_LEVEL
 #endif
+
+#ifndef LOG_LINE_BUFFER_SIZE
+#define LOG_LINE_BUFFER_SIZE 256U
+#endif
+
+#ifndef LOG_TRANSPORT_NONE
+#define LOG_TRANSPORT_NONE 0x00U
+#endif
+
+#ifndef LOG_TRANSPORT_RTT
+#define LOG_TRANSPORT_RTT 0x01U
+#endif
+
+#ifndef LOG_TRANSPORT_UART
+#define LOG_TRANSPORT_UART 0x02U
+#endif
+
+#ifndef LOG_TRANSPORT_CAN
+#define LOG_TRANSPORT_CAN 0x03U
+#endif
+
+typedef uint32_t (*logTimestampProvider)(void);
+typedef void (*logInitFunc)(void);
+typedef int32_t (*logOutputWriteFunc)(const uint8_t *buffer, uint16_t length);
+typedef stRingBuffer *(*logInputGetBufferFunc)(void);
+
+typedef struct stLogInterface {
+    uint32_t transport;
+    logInitFunc init;
+    logOutputWriteFunc write;
+    logInputGetBufferFunc getBuffer;
+    bool isOutputEnabled;
+    bool isInputEnabled;
+} stLogInterface;
+
+bool logInit(void);
+uint32_t logGetInputCount(void);
+stRingBuffer *logGetInputBuffer(uint32_t transport);
+void logSetTimestampProvider(logTimestampProvider provider);
 
 void logWrite(eLogLevel level, const char *tag, const char *format, ...) __attribute__((format(printf, 3, 4)));
 void logVWrite(eLogLevel level, const char *tag, const char *format, va_list args);
