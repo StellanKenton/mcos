@@ -34,8 +34,6 @@ typedef enum eDrvGpioPinMap {
     DRVGPIO_MAX,
 } eDrvGpioPinMap;
 
-bool drvGpioPortConsoleRegister(void);
-
 #ifdef __cplusplus
 }
 #endif

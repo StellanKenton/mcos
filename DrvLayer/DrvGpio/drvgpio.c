@@ -8,6 +8,7 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "drvgpio.h"
+#include "drvgpio_debug.h"
 
 #if (DRVGPIO_LOG_SUPPORT == 1)
 #include "../../Console/log.h"
@@ -136,7 +137,7 @@ void drvGpioToggle(eDrvGpioPinMap pin)
 
 bool drvGpioConsoleRegister(void)
 {
-    return drvGpioPortConsoleRegister();
+    return drvGpioDebugConsoleRegister();
 }
 
 
