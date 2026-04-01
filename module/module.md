@@ -143,14 +143,8 @@ typedef struct st<Module>Device {
 
 ```c
 typedef e<Module>DrvStatus (*<module>PortInitFunc)(uint8_t bus);
-typedef e<Module>DrvStatus (*<module>PortWriteFunc)(uint8_t bus,
-                                                    uint8_t address,
-                                                    const uint8_t *buffer,
-                                                    uint16_t length);
-typedef e<Module>DrvStatus (*<module>PortReadFunc)(uint8_t bus,
-                                                   uint8_t address,
-                                                   uint8_t *buffer,
-                                                   uint16_t length);
+typedef e<Module>DrvStatus (*<module>PortWriteFunc)(uint8_t bus, uint8_t address, const uint8_t *buffer, uint16_t length);
+typedef e<Module>DrvStatus (*<module>PortReadFunc)(uint8_t bus, uint8_t address, uint8_t *buffer, uint16_t length);
 
 typedef struct st<Module>PortInterface {
     <module>PortInitFunc init;

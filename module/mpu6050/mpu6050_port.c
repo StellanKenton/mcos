@@ -26,31 +26,11 @@ static bool gMpu6050PortCycleCounterReady = false;
 
 static void mpu6050PortEnableCycleCounter(void);
 static eMpu6050DrvIicStatus mpu6050PortSoftwareIicInitAdapter(uint8_t bus);
-static eMpu6050DrvIicStatus mpu6050PortSoftwareIicWriteRegisterAdapter(uint8_t bus,
-                                                                       uint8_t address,
-                                                                       const uint8_t *registerBuffer,
-                                                                       uint16_t registerLength,
-                                                                       const uint8_t *buffer,
-                                                                       uint16_t length);
-static eMpu6050DrvIicStatus mpu6050PortSoftwareIicReadRegisterAdapter(uint8_t bus,
-                                                                      uint8_t address,
-                                                                      const uint8_t *registerBuffer,
-                                                                      uint16_t registerLength,
-                                                                      uint8_t *buffer,
-                                                                      uint16_t length);
+static eMpu6050DrvIicStatus mpu6050PortSoftwareIicWriteRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
+static eMpu6050DrvIicStatus mpu6050PortSoftwareIicReadRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
 static eMpu6050DrvIicStatus mpu6050PortHardwareIicInitAdapter(uint8_t bus);
-static eMpu6050DrvIicStatus mpu6050PortHardwareIicWriteRegisterAdapter(uint8_t bus,
-                                                                       uint8_t address,
-                                                                       const uint8_t *registerBuffer,
-                                                                       uint16_t registerLength,
-                                                                       const uint8_t *buffer,
-                                                                       uint16_t length);
-static eMpu6050DrvIicStatus mpu6050PortHardwareIicReadRegisterAdapter(uint8_t bus,
-                                                                      uint8_t address,
-                                                                      const uint8_t *registerBuffer,
-                                                                      uint16_t registerLength,
-                                                                      uint8_t *buffer,
-                                                                      uint16_t length);
+static eMpu6050DrvIicStatus mpu6050PortHardwareIicWriteRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
+static eMpu6050DrvIicStatus mpu6050PortHardwareIicReadRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
 static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStatus(eDrvIicStatus status);
 static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStatus(eDrvAnlogIicStatus status);
 
@@ -190,42 +170,22 @@ static eMpu6050DrvIicStatus mpu6050PortSoftwareIicInitAdapter(uint8_t bus)
     return mpu6050PortMapDrvAnlogIicStatus(drvAnlogIicInit((eDrvAnlogIicPortMap)bus));
 }
 
-static eMpu6050DrvIicStatus mpu6050PortSoftwareIicWriteRegisterAdapter(uint8_t bus,
-                                                                       uint8_t address,
-                                                                       const uint8_t *registerBuffer,
-                                                                       uint16_t registerLength,
-                                                                       const uint8_t *buffer,
-                                                                       uint16_t length)
+static eMpu6050DrvIicStatus mpu6050PortSoftwareIicWriteRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVANLOGIIC_MAX) {
         return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvAnlogIicStatus(drvAnlogIicWriteRegister((eDrvAnlogIicPortMap)bus,
-                                                                    address,
-                                                                    registerBuffer,
-                                                                    registerLength,
-                                                                    buffer,
-                                                                    length));
+    return mpu6050PortMapDrvAnlogIicStatus(drvAnlogIicWriteRegister((eDrvAnlogIicPortMap)bus,address,registerBuffer,registerLength,buffer,length));
 }
 
-static eMpu6050DrvIicStatus mpu6050PortSoftwareIicReadRegisterAdapter(uint8_t bus,
-                                                                      uint8_t address,
-                                                                      const uint8_t *registerBuffer,
-                                                                      uint16_t registerLength,
-                                                                      uint8_t *buffer,
-                                                                      uint16_t length)
+static eMpu6050DrvIicStatus mpu6050PortSoftwareIicReadRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVANLOGIIC_MAX) {
         return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvAnlogIicStatus(drvAnlogIicReadRegister((eDrvAnlogIicPortMap)bus,
-                                                                   address,
-                                                                   registerBuffer,
-                                                                   registerLength,
-                                                                   buffer,
-                                                                   length));
+    return mpu6050PortMapDrvAnlogIicStatus(drvAnlogIicReadRegister((eDrvAnlogIicPortMap)bus,address,registerBuffer,registerLength,buffer,length));
 }
 
 static eMpu6050DrvIicStatus mpu6050PortHardwareIicInitAdapter(uint8_t bus)
@@ -237,42 +197,22 @@ static eMpu6050DrvIicStatus mpu6050PortHardwareIicInitAdapter(uint8_t bus)
     return mpu6050PortMapDrvIicStatus(drvIicInit((eDrvIicPortMap)bus));
 }
 
-static eMpu6050DrvIicStatus mpu6050PortHardwareIicWriteRegisterAdapter(uint8_t bus,
-                                                                       uint8_t address,
-                                                                       const uint8_t *registerBuffer,
-                                                                       uint16_t registerLength,
-                                                                       const uint8_t *buffer,
-                                                                       uint16_t length)
+static eMpu6050DrvIicStatus mpu6050PortHardwareIicWriteRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVIIC_MAX) {
         return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvIicStatus(drvIicWriteRegister((eDrvIicPortMap)bus,
-                                                          address,
-                                                          registerBuffer,
-                                                          registerLength,
-                                                          buffer,
-                                                          length));
+    return mpu6050PortMapDrvIicStatus(drvIicWriteRegister((eDrvIicPortMap)bus,address,registerBuffer,registerLength,buffer,length));
 }
 
-static eMpu6050DrvIicStatus mpu6050PortHardwareIicReadRegisterAdapter(uint8_t bus,
-                                                                      uint8_t address,
-                                                                      const uint8_t *registerBuffer,
-                                                                      uint16_t registerLength,
-                                                                      uint8_t *buffer,
-                                                                      uint16_t length)
+static eMpu6050DrvIicStatus mpu6050PortHardwareIicReadRegisterAdapter(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVIIC_MAX) {
         return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvIicStatus(drvIicReadRegister((eDrvIicPortMap)bus,
-                                                         address,
-                                                         registerBuffer,
-                                                         registerLength,
-                                                         buffer,
-                                                         length));
+    return mpu6050PortMapDrvIicStatus(drvIicReadRegister((eDrvIicPortMap)bus,address,registerBuffer,registerLength,buffer,length));
 }
 
 static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStatus(eDrvIicStatus status)
@@ -336,3 +276,4 @@ static void mpu6050PortEnableCycleCounter(void)
 }
 
 /**************************End of file********************************/
+

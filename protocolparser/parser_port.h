@@ -23,9 +23,7 @@ extern "C" {
 
 uint32_t commPacketParserPortGetTickMs(void);
 void commPacketParserPortApplyDefaultConfig(stCommPacketParserConfig *config);
-eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser,
-                                                 stRingBuffer *ringBuffer,
-                                                 stCommPacketParserConfig *config);
+eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser, stRingBuffer *ringBuffer, stCommPacketParserConfig *config);
 
 #ifdef __cplusplus
 }
@@ -33,3 +31,4 @@ eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser,
 
 #endif  // COMM_PACKET_PARSER_PORT_H
 /**************************End of file********************************/
+

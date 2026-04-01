@@ -229,9 +229,7 @@ static void drvIicUnlockBus(eDrvIicPortMap iic)
 #endif
 }
 
-static eDrvIicStatus drvIicTransferLocked(eDrvIicPortMap iic,
-                                          const stDrvIicTransfer *transfer,
-                                          uint32_t timeoutMs)
+static eDrvIicStatus drvIicTransferLocked(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs)
 {
     stDrvIicBspInterface *lBspInterface = drvIicGetBspInterface(iic);
 
@@ -308,9 +306,7 @@ eDrvIicStatus drvIicRecoverBus(eDrvIicPortMap iic)
     return lStatus;
 }
 
-eDrvIicStatus drvIicTransferTimeout(eDrvIicPortMap iic,
-                                    const stDrvIicTransfer *transfer,
-                                    uint32_t timeoutMs)
+eDrvIicStatus drvIicTransferTimeout(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs)
 {
     eDrvIicStatus lStatus;
 
@@ -337,11 +333,7 @@ eDrvIicStatus drvIicTransfer(eDrvIicPortMap iic, const stDrvIicTransfer *transfe
     return drvIicTransferTimeout(iic, transfer, 0U);
 }
 
-eDrvIicStatus drvIicWriteTimeout(eDrvIicPortMap iic,
-                                 uint8_t address,
-                                 const uint8_t *buffer,
-                                 uint16_t length,
-                                 uint32_t timeoutMs)
+eDrvIicStatus drvIicWriteTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvIicTransfer lTransfer;
 
@@ -356,19 +348,12 @@ eDrvIicStatus drvIicWriteTimeout(eDrvIicPortMap iic,
     return drvIicTransferTimeout(iic, &lTransfer, timeoutMs);
 }
 
-eDrvIicStatus drvIicWrite(eDrvIicPortMap iic,
-                          uint8_t address,
-                          const uint8_t *buffer,
-                          uint16_t length)
+eDrvIicStatus drvIicWrite(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length)
 {
     return drvIicWriteTimeout(iic, address, buffer, length, 0U);
 }
 
-eDrvIicStatus drvIicReadTimeout(eDrvIicPortMap iic,
-                                uint8_t address,
-                                uint8_t *buffer,
-                                uint16_t length,
-                                uint32_t timeoutMs)
+eDrvIicStatus drvIicReadTimeout(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvIicTransfer lTransfer;
 
@@ -383,21 +368,12 @@ eDrvIicStatus drvIicReadTimeout(eDrvIicPortMap iic,
     return drvIicTransferTimeout(iic, &lTransfer, timeoutMs);
 }
 
-eDrvIicStatus drvIicRead(eDrvIicPortMap iic,
-                         uint8_t address,
-                         uint8_t *buffer,
-                         uint16_t length)
+eDrvIicStatus drvIicRead(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length)
 {
     return drvIicReadTimeout(iic, address, buffer, length, 0U);
 }
 
-eDrvIicStatus drvIicWriteRegisterTimeout(eDrvIicPortMap iic,
-                                         uint8_t address,
-                                         const uint8_t *registerBuffer,
-                                         uint16_t registerLength,
-                                         const uint8_t *buffer,
-                                         uint16_t length,
-                                         uint32_t timeoutMs)
+eDrvIicStatus drvIicWriteRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvIicTransfer lTransfer;
 
@@ -412,23 +388,12 @@ eDrvIicStatus drvIicWriteRegisterTimeout(eDrvIicPortMap iic,
     return drvIicTransferTimeout(iic, &lTransfer, timeoutMs);
 }
 
-eDrvIicStatus drvIicWriteRegister(eDrvIicPortMap iic,
-                                  uint8_t address,
-                                  const uint8_t *registerBuffer,
-                                  uint16_t registerLength,
-                                  const uint8_t *buffer,
-                                  uint16_t length)
+eDrvIicStatus drvIicWriteRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length)
 {
     return drvIicWriteRegisterTimeout(iic, address, registerBuffer, registerLength, buffer, length, 0U);
 }
 
-eDrvIicStatus drvIicReadRegisterTimeout(eDrvIicPortMap iic,
-                                        uint8_t address,
-                                        const uint8_t *registerBuffer,
-                                        uint16_t registerLength,
-                                        uint8_t *buffer,
-                                        uint16_t length,
-                                        uint32_t timeoutMs)
+eDrvIicStatus drvIicReadRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvIicTransfer lTransfer;
 
@@ -443,14 +408,10 @@ eDrvIicStatus drvIicReadRegisterTimeout(eDrvIicPortMap iic,
     return drvIicTransferTimeout(iic, &lTransfer, timeoutMs);
 }
 
-eDrvIicStatus drvIicReadRegister(eDrvIicPortMap iic,
-                                 uint8_t address,
-                                 const uint8_t *registerBuffer,
-                                 uint16_t registerLength,
-                                 uint8_t *buffer,
-                                 uint16_t length)
+eDrvIicStatus drvIicReadRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length)
 {
     return drvIicReadRegisterTimeout(iic, address, registerBuffer, registerLength, buffer, length, 0U);
 }
 
 /**************************End of file********************************/
+

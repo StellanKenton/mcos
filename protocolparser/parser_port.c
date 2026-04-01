@@ -43,9 +43,7 @@ void commPacketParserPortApplyDefaultConfig(stCommPacketParserConfig *config)
     }
 }
 
-eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser,
-                                                 stRingBuffer *ringBuffer,
-                                                 stCommPacketParserConfig *config)
+eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser, stRingBuffer *ringBuffer, stCommPacketParserConfig *config)
 {
     if (config == NULL) {
         return COMM_PACKET_PARSER_INVALID_ARGUMENT;
@@ -55,3 +53,4 @@ eCommPacketParserStatus commPacketParserPortInit(stCommPacketParser *parser,
     return commPacketParserInit(parser, ringBuffer, config);
 }
 /**************************End of file********************************/
+

@@ -35,16 +35,9 @@ typedef enum eCommPacketParserCrcEndian {
     COMM_PACKET_PARSER_CRC_ENDIAN_BIG
 } eCommPacketParserCrcEndian;
 
-typedef uint32_t (*commPacketParserHeaderLengthFunc)(const uint8_t *buffer,
-                                                     uint32_t availableLength,
-                                                     void *userContext);
-typedef uint32_t (*commPacketParserPacketLengthFunc)(const uint8_t *buffer,
-                                                     uint32_t headerLength,
-                                                     uint32_t availableLength,
-                                                     void *userContext);
-typedef uint32_t (*commPacketParserCrcCalculateFunc)(const uint8_t *buffer,
-                                                     uint32_t length,
-                                                     void *userContext);
+typedef uint32_t (*commPacketParserHeaderLengthFunc)(const uint8_t *buffer, uint32_t availableLength, void *userContext);
+typedef uint32_t (*commPacketParserPacketLengthFunc)(const uint8_t *buffer, uint32_t headerLength, uint32_t availableLength, void *userContext);
+typedef uint32_t (*commPacketParserCrcCalculateFunc)(const uint8_t *buffer, uint32_t length, void *userContext);
 typedef uint32_t (*commPacketParserGetTickFunc)(void);
 
 typedef struct stCommPacketParserPacket {
@@ -85,12 +78,9 @@ typedef struct stCommPacketParser {
 } stCommPacketParser;
 
 bool commPacketParserIsConfigValid(const stCommPacketParserConfig *config);
-eCommPacketParserStatus commPacketParserInit(stCommPacketParser *parser,
-                                             stRingBuffer *ringBuffer,
-                                             const stCommPacketParserConfig *config);
+eCommPacketParserStatus commPacketParserInit(stCommPacketParser *parser, stRingBuffer *ringBuffer, const stCommPacketParserConfig *config);
 void commPacketParserReset(stCommPacketParser *parser);
-eCommPacketParserStatus commPacketParserProcess(stCommPacketParser *parser,
-                                                stCommPacketParserPacket *packet);
+eCommPacketParserStatus commPacketParserProcess(stCommPacketParser *parser, stCommPacketParserPacket *packet);
 bool commPacketParserHasReadyPacket(const stCommPacketParser *parser);
 const stCommPacketParserPacket *commPacketParserGetReadyPacket(const stCommPacketParser *parser);
 void commPacketParserReleasePacket(stCommPacketParser *parser);
@@ -101,3 +91,4 @@ void commPacketParserReleasePacket(stCommPacketParser *parser);
 
 #endif  // COMM_PACKET_PARSER_H
 /**************************End of file********************************/
+

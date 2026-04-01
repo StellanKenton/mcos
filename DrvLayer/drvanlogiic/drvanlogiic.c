@@ -131,8 +131,7 @@ static void drvAnlogIicDelayHalfPeriod(const stDrvAnlogIicBspInterface *bspInter
     bspInterface->delayUs(drvAnlogIicGetHalfPeriodUs(bspInterface));
 }
 
-static eDrvAnlogIicStatus drvAnlogIicWaitSclHigh(eDrvAnlogIicPortMap iic,
-                                                 stDrvAnlogIicBspInterface *bspInterface)
+static eDrvAnlogIicStatus drvAnlogIicWaitSclHigh(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface)
 {
     if (bspInterface == NULL) {
         return DRVANLOGIIC_STATUS_NOT_READY;
@@ -142,9 +141,7 @@ static eDrvAnlogIicStatus drvAnlogIicWaitSclHigh(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicWriteBit(eDrvAnlogIicPortMap iic,
-                                              stDrvAnlogIicBspInterface *bspInterface,
-                                              bool isHigh)
+static eDrvAnlogIicStatus drvAnlogIicWriteBit(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, bool isHigh)
 {
     eDrvAnlogIicStatus lStatus;
 
@@ -162,9 +159,7 @@ static eDrvAnlogIicStatus drvAnlogIicWriteBit(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicReadBit(eDrvAnlogIicPortMap iic,
-                                             stDrvAnlogIicBspInterface *bspInterface,
-                                             bool *bitValue)
+static eDrvAnlogIicStatus drvAnlogIicReadBit(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, bool *bitValue)
 {
     eDrvAnlogIicStatus lStatus;
 
@@ -187,8 +182,7 @@ static eDrvAnlogIicStatus drvAnlogIicReadBit(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicSendStart(eDrvAnlogIicPortMap iic,
-                                               stDrvAnlogIicBspInterface *bspInterface)
+static eDrvAnlogIicStatus drvAnlogIicSendStart(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface)
 {
     eDrvAnlogIicStatus lStatus;
 
@@ -206,8 +200,7 @@ static eDrvAnlogIicStatus drvAnlogIicSendStart(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicSendStop(eDrvAnlogIicPortMap iic,
-                                              stDrvAnlogIicBspInterface *bspInterface)
+static eDrvAnlogIicStatus drvAnlogIicSendStop(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface)
 {
     eDrvAnlogIicStatus lStatus;
 
@@ -225,9 +218,7 @@ static eDrvAnlogIicStatus drvAnlogIicSendStop(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicWriteByte(eDrvAnlogIicPortMap iic,
-                                               stDrvAnlogIicBspInterface *bspInterface,
-                                               uint8_t data)
+static eDrvAnlogIicStatus drvAnlogIicWriteByte(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, uint8_t data)
 {
     uint8_t lBitIndex;
     bool lAckLevel = true;
@@ -250,10 +241,7 @@ static eDrvAnlogIicStatus drvAnlogIicWriteByte(eDrvAnlogIicPortMap iic,
     return lAckLevel ? DRVANLOGIIC_STATUS_NACK : DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicReadByte(eDrvAnlogIicPortMap iic,
-                                              stDrvAnlogIicBspInterface *bspInterface,
-                                              bool acknowledge,
-                                              uint8_t *data)
+static eDrvAnlogIicStatus drvAnlogIicReadByte(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, bool acknowledge, uint8_t *data)
 {
     uint8_t lBitIndex;
     bool lBitValue = false;
@@ -280,11 +268,7 @@ static eDrvAnlogIicStatus drvAnlogIicReadByte(eDrvAnlogIicPortMap iic,
     return drvAnlogIicWriteBit(iic, bspInterface, !acknowledge);
 }
 
-static eDrvAnlogIicStatus drvAnlogIicWriteBufferLocked(eDrvAnlogIicPortMap iic,
-                                                       stDrvAnlogIicBspInterface *bspInterface,
-                                                       uint8_t address,
-                                                       const uint8_t *buffer,
-                                                       uint16_t length)
+static eDrvAnlogIicStatus drvAnlogIicWriteBufferLocked(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, uint8_t address, const uint8_t *buffer, uint16_t length)
 {
     uint16_t lIndex;
     eDrvAnlogIicStatus lStatus;
@@ -304,10 +288,7 @@ static eDrvAnlogIicStatus drvAnlogIicWriteBufferLocked(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicWriteRawLocked(eDrvAnlogIicPortMap iic,
-                                                    stDrvAnlogIicBspInterface *bspInterface,
-                                                    const uint8_t *buffer,
-                                                    uint16_t length)
+static eDrvAnlogIicStatus drvAnlogIicWriteRawLocked(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, const uint8_t *buffer, uint16_t length)
 {
     uint16_t lIndex;
     eDrvAnlogIicStatus lStatus;
@@ -322,11 +303,7 @@ static eDrvAnlogIicStatus drvAnlogIicWriteRawLocked(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicReadBufferLocked(eDrvAnlogIicPortMap iic,
-                                                      stDrvAnlogIicBspInterface *bspInterface,
-                                                      uint8_t address,
-                                                      uint8_t *buffer,
-                                                      uint16_t length)
+static eDrvAnlogIicStatus drvAnlogIicReadBufferLocked(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface, uint8_t address, uint8_t *buffer, uint16_t length)
 {
     uint16_t lIndex;
     eDrvAnlogIicStatus lStatus;
@@ -349,8 +326,7 @@ static eDrvAnlogIicStatus drvAnlogIicReadBufferLocked(eDrvAnlogIicPortMap iic,
     return DRVANLOGIIC_STATUS_OK;
 }
 
-static eDrvAnlogIicStatus drvAnlogIicRecoverBusLocked(eDrvAnlogIicPortMap iic,
-                                                      stDrvAnlogIicBspInterface *bspInterface)
+static eDrvAnlogIicStatus drvAnlogIicRecoverBusLocked(eDrvAnlogIicPortMap iic, stDrvAnlogIicBspInterface *bspInterface)
 {
     uint8_t lClockIndex;
     uint8_t lRecoveryClockCount;
@@ -621,18 +597,13 @@ eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlog
     return lStopStatus;
 }
 
-eDrvAnlogIicStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic,
-                                              const stDrvAnlogIicTransfer *transfer,
-                                              uint32_t timeoutMs)
+eDrvAnlogIicStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer, uint32_t timeoutMs)
 {
     (void)timeoutMs;
     return drvAnlogIicTransfer(iic, transfer);
 }
 
-eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
-                                    uint8_t address,
-                                    const uint8_t *buffer,
-                                    uint16_t length)
+eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length)
 {
     stDrvAnlogIicTransfer lTransfer = {
         .address = address,
@@ -647,20 +618,13 @@ eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
     return drvAnlogIicTransfer(iic, &lTransfer);
 }
 
-eDrvAnlogIicStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic,
-                                           uint8_t address,
-                                           const uint8_t *buffer,
-                                           uint16_t length,
-                                           uint32_t timeoutMs)
+eDrvAnlogIicStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     (void)timeoutMs;
     return drvAnlogIicWrite(iic, address, buffer, length);
 }
 
-eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
-                                   uint8_t address,
-                                   uint8_t *buffer,
-                                   uint16_t length)
+eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length)
 {
     stDrvAnlogIicTransfer lTransfer = {
         .address = address,
@@ -675,22 +639,13 @@ eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
     return drvAnlogIicTransfer(iic, &lTransfer);
 }
 
-eDrvAnlogIicStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic,
-                                          uint8_t address,
-                                          uint8_t *buffer,
-                                          uint16_t length,
-                                          uint32_t timeoutMs)
+eDrvAnlogIicStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     (void)timeoutMs;
     return drvAnlogIicRead(iic, address, buffer, length);
 }
 
-eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
-                                            uint8_t address,
-                                            const uint8_t *registerBuffer,
-                                            uint16_t registerLength,
-                                            const uint8_t *buffer,
-                                            uint16_t length)
+eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length)
 {
     stDrvAnlogIicTransfer lTransfer;
 
@@ -717,24 +672,13 @@ eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
     return drvAnlogIicTransfer(iic, &lTransfer);
 }
 
-eDrvAnlogIicStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic,
-                                                   uint8_t address,
-                                                   const uint8_t *registerBuffer,
-                                                   uint16_t registerLength,
-                                                   const uint8_t *buffer,
-                                                   uint16_t length,
-                                                   uint32_t timeoutMs)
+eDrvAnlogIicStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     (void)timeoutMs;
     return drvAnlogIicWriteRegister(iic, address, registerBuffer, registerLength, buffer, length);
 }
 
-eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
-                                           uint8_t address,
-                                           const uint8_t *registerBuffer,
-                                           uint16_t registerLength,
-                                           uint8_t *buffer,
-                                           uint16_t length)
+eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length)
 {
     stDrvAnlogIicTransfer lTransfer;
 
@@ -754,16 +698,11 @@ eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
     return drvAnlogIicTransfer(iic, &lTransfer);
 }
 
-eDrvAnlogIicStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic,
-                                                  uint8_t address,
-                                                  const uint8_t *registerBuffer,
-                                                  uint16_t registerLength,
-                                                  uint8_t *buffer,
-                                                  uint16_t length,
-                                                  uint32_t timeoutMs)
+eDrvAnlogIicStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     (void)timeoutMs;
     return drvAnlogIicReadRegister(iic, address, registerBuffer, registerLength, buffer, length);
 }
 
 /**************************End of file********************************/
+

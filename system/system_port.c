@@ -31,11 +31,7 @@ static TaskHandle_t gMemoryTaskHandle = NULL;
 static stMpu6050Device gSensorMpu6050Device;
 
 static void process(void);
-static BaseType_t createTask(TaskFunction_t taskFunction,
-    const char *taskName,
-    configSTACK_DEPTH_TYPE stackDepth,
-    UBaseType_t taskPriority,
-    TaskHandle_t *taskHandle);
+static BaseType_t createTask(TaskFunction_t taskFunction, const char *taskName, configSTACK_DEPTH_TYPE stackDepth, UBaseType_t taskPriority, TaskHandle_t *taskHandle);
 static void sensorTaskCallback(void *parameter);
 static void consoleTaskCallback(void *parameter);
 static void guardTaskCallback(void *parameter);
@@ -101,11 +97,7 @@ void systemTaskCallback(void *parameter)
     }
 }
 
-static BaseType_t createTask(TaskFunction_t taskFunction,
-    const char *taskName,
-    configSTACK_DEPTH_TYPE stackDepth,
-    UBaseType_t taskPriority,
-    TaskHandle_t *taskHandle)
+static BaseType_t createTask(TaskFunction_t taskFunction, const char *taskName, configSTACK_DEPTH_TYPE stackDepth, UBaseType_t taskPriority, TaskHandle_t *taskHandle)
 {
     BaseType_t lReturn;
 
@@ -374,3 +366,4 @@ static void memoryTaskCallback(void *parameter)
     }
 }
 /**************************End of file********************************/
+

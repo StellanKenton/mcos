@@ -16,16 +16,9 @@ static bool mpu6050IsReadyForTransfer(const stMpu6050Device *device);
 static bool mpu6050IsCompatibleDeviceId(uint8_t deviceId);
 static eMpu6050Status mpu6050MapIicStatus(eMpu6050DrvIicStatus status);
 static const stMpu6050PortIicInterface *mpu6050GetIicInterface(const stMpu6050Device *device);
-static eMpu6050Status mpu6050WriteRegisterInternal(const stMpu6050Device *device,
-                                                   uint8_t registerAddress,
-                                                   uint8_t value);
-static eMpu6050Status mpu6050ReadRegisterInternal(const stMpu6050Device *device,
-                                                  uint8_t registerAddress,
-                                                  uint8_t *value);
-static eMpu6050Status mpu6050ReadRegistersInternal(const stMpu6050Device *device,
-                                                   uint8_t registerAddress,
-                                                   uint8_t *buffer,
-                                                   uint16_t length);
+static eMpu6050Status mpu6050WriteRegisterInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t value);
+static eMpu6050Status mpu6050ReadRegisterInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t *value);
+static eMpu6050Status mpu6050ReadRegistersInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t *buffer, uint16_t length);
 static int16_t mpu6050ParseBigEndianInt16(const uint8_t *buffer);
 
 void mpu6050GetDefaultConfig(stMpu6050Device *device)
@@ -77,9 +70,7 @@ eMpu6050Status mpu6050Init(stMpu6050Device *device)
         return MPU6050_STATUS_DEVICE_ID_MISMATCH;
     }
 
-    lStatus = mpu6050WriteRegisterInternal(device,
-                                           MPU6050_REG_PWR_MGMT_1,
-                                           MPU6050_PWR1_DEVICE_RESET_BIT);
+    lStatus = mpu6050WriteRegisterInternal(device,MPU6050_REG_PWR_MGMT_1,MPU6050_PWR1_DEVICE_RESET_BIT);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -99,23 +90,17 @@ eMpu6050Status mpu6050Init(stMpu6050Device *device)
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegisterInternal(device,
-                                           MPU6050_REG_SMPLRT_DIV,
-                                           device->sampleRateDivider);
+    lStatus = mpu6050WriteRegisterInternal(device,MPU6050_REG_SMPLRT_DIV,device->sampleRateDivider);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegisterInternal(device,
-                                           MPU6050_REG_CONFIG,
-                                           (uint8_t)(device->dlpfConfig & 0x07U));
+    lStatus = mpu6050WriteRegisterInternal(device,MPU6050_REG_CONFIG,(uint8_t)(device->dlpfConfig & 0x07U));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegisterInternal(device,
-                                           MPU6050_REG_GYRO_CONFIG,
-                                           (uint8_t)((uint8_t)device->gyroRange << 3U));
+    lStatus = mpu6050WriteRegisterInternal(device,MPU6050_REG_GYRO_CONFIG,(uint8_t)((uint8_t)device->gyroRange << 3U));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -213,10 +198,7 @@ eMpu6050Status mpu6050ReadRawSample(stMpu6050Device *device, stMpu6050RawSample 
         return MPU6050_STATUS_NOT_READY;
     }
 
-    lStatus = mpu6050ReadRegistersInternal(device,
-                                           MPU6050_REG_ACCEL_XOUT_H,
-                                           lBuffer,
-                                           MPU6050_SAMPLE_BYTES);
+    lStatus = mpu6050ReadRegistersInternal(device,MPU6050_REG_ACCEL_XOUT_H,lBuffer,MPU6050_SAMPLE_BYTES);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -323,9 +305,7 @@ static const stMpu6050PortIicInterface *mpu6050GetIicInterface(const stMpu6050De
     return mpu6050PortGetIicInterface(&device->iicBinding);
 }
 
-static eMpu6050Status mpu6050WriteRegisterInternal(const stMpu6050Device *device,
-                                                   uint8_t registerAddress,
-                                                   uint8_t value)
+static eMpu6050Status mpu6050WriteRegisterInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t value)
 {
     const stMpu6050PortIicInterface *lIicInterface;
 
@@ -334,17 +314,10 @@ static eMpu6050Status mpu6050WriteRegisterInternal(const stMpu6050Device *device
         return MPU6050_STATUS_NOT_READY;
     }
 
-    return mpu6050MapIicStatus(lIicInterface->writeRegister(device->iicBinding.bus,
-                                                            device->address,
-                                                            &registerAddress,
-                                                            1U,
-                                                            &value,
-                                                            1U));
+    return mpu6050MapIicStatus(lIicInterface->writeRegister(device->iicBinding.bus,device->address,&registerAddress,1U,&value,1U));
 }
 
-static eMpu6050Status mpu6050ReadRegisterInternal(const stMpu6050Device *device,
-                                                  uint8_t registerAddress,
-                                                  uint8_t *value)
+static eMpu6050Status mpu6050ReadRegisterInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t *value)
 {
     const stMpu6050PortIicInterface *lIicInterface;
 
@@ -357,18 +330,10 @@ static eMpu6050Status mpu6050ReadRegisterInternal(const stMpu6050Device *device,
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStatus(lIicInterface->readRegister(device->iicBinding.bus,
-                                                           device->address,
-                                                           &registerAddress,
-                                                           1U,
-                                                           value,
-                                                           1U));
+    return mpu6050MapIicStatus(lIicInterface->readRegister(device->iicBinding.bus,device->address,&registerAddress,1U,value,1U));
 }
 
-static eMpu6050Status mpu6050ReadRegistersInternal(const stMpu6050Device *device,
-                                                   uint8_t registerAddress,
-                                                   uint8_t *buffer,
-                                                   uint16_t length)
+static eMpu6050Status mpu6050ReadRegistersInternal(const stMpu6050Device *device, uint8_t registerAddress, uint8_t *buffer, uint16_t length)
 {
     const stMpu6050PortIicInterface *lIicInterface;
 
@@ -381,12 +346,7 @@ static eMpu6050Status mpu6050ReadRegistersInternal(const stMpu6050Device *device
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStatus(lIicInterface->readRegister(device->iicBinding.bus,
-                                                           device->address,
-                                                           &registerAddress,
-                                                           1U,
-                                                           buffer,
-                                                           length));
+    return mpu6050MapIicStatus(lIicInterface->readRegister(device->iicBinding.bus,device->address,&registerAddress,1U,buffer,length));
 }
 
 static int16_t mpu6050ParseBigEndianInt16(const uint8_t *buffer)
@@ -398,3 +358,4 @@ static int16_t mpu6050ParseBigEndianInt16(const uint8_t *buffer)
 }
 
 /**************************End of file********************************/
+

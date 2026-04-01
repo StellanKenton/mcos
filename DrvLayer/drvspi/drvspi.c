@@ -239,12 +239,7 @@ static void drvSpiUnlockBus(eDrvSpiPortMap spi)
 #endif
 }
 
-static eDrvSpiStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi,
-                                             const uint8_t *txBuffer,
-                                             uint8_t *rxBuffer,
-                                             uint16_t length,
-                                             uint8_t fillData,
-                                             uint32_t timeoutMs)
+static eDrvSpiStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint8_t fillData, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface = drvSpiGetBspInterface(spi);
 
@@ -260,9 +255,7 @@ static eDrvSpiStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi,
                                    drvSpiGetTimeoutMs(lBspInterface, timeoutMs));
 }
 
-static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi,
-                                          const stDrvSpiTransfer *transfer,
-                                          uint32_t timeoutMs)
+static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface = drvSpiGetBspInterface(spi);
     eDrvSpiStatus lStatus;
@@ -374,9 +367,7 @@ eDrvSpiStatus drvSpiSetCsControl(eDrvSpiPortMap spi, const stDrvSpiCsControl *co
     return DRVSPI_STATUS_OK;
 }
 
-eDrvSpiStatus drvSpiTransferTimeout(eDrvSpiPortMap spi,
-                                    const stDrvSpiTransfer *transfer,
-                                    uint32_t timeoutMs)
+eDrvSpiStatus drvSpiTransferTimeout(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
 {
     eDrvSpiStatus lStatus;
 
@@ -403,10 +394,7 @@ eDrvSpiStatus drvSpiTransfer(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfe
     return drvSpiTransferTimeout(spi, transfer, 0U);
 }
 
-eDrvSpiStatus drvSpiWriteTimeout(eDrvSpiPortMap spi,
-                                 const uint8_t *buffer,
-                                 uint16_t length,
-                                 uint32_t timeoutMs)
+eDrvSpiStatus drvSpiWriteTimeout(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = buffer,
@@ -426,10 +414,7 @@ eDrvSpiStatus drvSpiWrite(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t le
     return drvSpiWriteTimeout(spi, buffer, length, 0U);
 }
 
-eDrvSpiStatus drvSpiReadTimeout(eDrvSpiPortMap spi,
-                                uint8_t *buffer,
-                                uint16_t length,
-                                uint32_t timeoutMs)
+eDrvSpiStatus drvSpiReadTimeout(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = NULL,
@@ -449,12 +434,7 @@ eDrvSpiStatus drvSpiRead(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length)
     return drvSpiReadTimeout(spi, buffer, length, 0U);
 }
 
-eDrvSpiStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi,
-                                     const uint8_t *writeBuffer,
-                                     uint16_t writeLength,
-                                     uint8_t *readBuffer,
-                                     uint16_t readLength,
-                                     uint32_t timeoutMs)
+eDrvSpiStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = writeBuffer,
@@ -469,20 +449,12 @@ eDrvSpiStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi,
     return drvSpiTransferTimeout(spi, &lTransfer, timeoutMs);
 }
 
-eDrvSpiStatus drvSpiWriteRead(eDrvSpiPortMap spi,
-                              const uint8_t *writeBuffer,
-                              uint16_t writeLength,
-                              uint8_t *readBuffer,
-                              uint16_t readLength)
+eDrvSpiStatus drvSpiWriteRead(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength)
 {
     return drvSpiWriteReadTimeout(spi, writeBuffer, writeLength, readBuffer, readLength, 0U);
 }
 
-eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi,
-                                    const uint8_t *txBuffer,
-                                    uint8_t *rxBuffer,
-                                    uint16_t length,
-                                    uint32_t timeoutMs)
+eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface;
     eDrvSpiStatus lStatus;
@@ -516,11 +488,9 @@ eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi,
     return lStatus;
 }
 
-eDrvSpiStatus drvSpiExchange(eDrvSpiPortMap spi,
-                             const uint8_t *txBuffer,
-                             uint8_t *rxBuffer,
-                             uint16_t length)
+eDrvSpiStatus drvSpiExchange(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length)
 {
     return drvSpiExchangeTimeout(spi, txBuffer, rxBuffer, length, 0U);
 }
 /**************************End of file********************************/
+

@@ -30,20 +30,11 @@ typedef enum eDrvUartStatus {
 } eDrvUartStatus;
 
 typedef eDrvUartStatus (*drvUartBspInitFunc)(eDrvUartPortMap uart);
-typedef eDrvUartStatus (*drvUartBspTransmitFunc)(eDrvUartPortMap uart,
-                                                 const uint8_t *buffer,
-                                                 uint16_t length,
-                                                 uint32_t timeoutMs);
-typedef eDrvUartStatus (*drvUartBspTransmitItFunc)(eDrvUartPortMap uart,
-                                                   const uint8_t *buffer,
-                                                   uint16_t length);
-typedef eDrvUartStatus (*drvUartBspTransmitDmaFunc)(eDrvUartPortMap uart,
-                                                    const uint8_t *buffer,
-                                                    uint16_t length);
+typedef eDrvUartStatus (*drvUartBspTransmitFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+typedef eDrvUartStatus (*drvUartBspTransmitItFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
+typedef eDrvUartStatus (*drvUartBspTransmitDmaFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
 typedef uint16_t (*drvUartBspGetDataLenFunc)(eDrvUartPortMap uart);
-typedef eDrvUartStatus (*drvUartBspReceiveFunc)(eDrvUartPortMap uart,
-                                                uint8_t *buffer,
-                                                uint16_t length);
+typedef eDrvUartStatus (*drvUartBspReceiveFunc)(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
 
 typedef struct stDrvUartBspInterface {
     drvUartBspInitFunc init;
@@ -72,3 +63,4 @@ stRingBuffer *drvUartLogGetInputBuffer(void);
 
 #endif  // DRVUART_H
 /**************************End of file********************************/
+

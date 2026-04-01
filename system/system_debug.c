@@ -25,20 +25,9 @@
 #define SYSTEM_DEBUG_TASK_USAGE_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE * 4U)
 #define SYSTEM_DEBUG_TASK_USAGE_TASK_PRIORITY        (tskIDLE_PRIORITY + 1U)
 
-static const TaskStatus_t *systemDebugFindTaskStatusByHandle(const TaskStatus_t *taskStatusArray,
-    UBaseType_t taskCount,
-    TaskHandle_t taskHandle);
-static bool systemDebugCaptureTaskUsageSnapshot(TaskStatus_t *taskStatusArray,
-    UBaseType_t capacity,
-    UBaseType_t *taskCount,
-    uint32_t *totalRunTime);
-static eConsoleCommandResult systemDebugReplyTaskUsageSample(uint32_t transport,
-    uint32_t sampleIndex,
-    const TaskStatus_t *currentTaskStats,
-    UBaseType_t currentTaskCount,
-    const TaskStatus_t *previousTaskStats,
-    UBaseType_t previousTaskCount,
-    uint32_t totalRunTimeDelta);
+static const TaskStatus_t *systemDebugFindTaskStatusByHandle(const TaskStatus_t *taskStatusArray, UBaseType_t taskCount, TaskHandle_t taskHandle);
+static bool systemDebugCaptureTaskUsageSnapshot(TaskStatus_t *taskStatusArray, UBaseType_t capacity, UBaseType_t *taskCount, uint32_t *totalRunTime);
+static eConsoleCommandResult systemDebugReplyTaskUsageSample(uint32_t transport, uint32_t sampleIndex, const TaskStatus_t *currentTaskStats, UBaseType_t currentTaskCount, const TaskStatus_t *previousTaskStats, UBaseType_t previousTaskCount, uint32_t totalRunTimeDelta);
 static void systemDebugTaskUsageSampler(void *parameter);
 #endif
 
@@ -72,9 +61,7 @@ static const stConsoleCommand gSystemTaskUsageConsoleCommand = {
     .handler = systemDebugConsoleTaskUsageHandler,
 };
 
-static const TaskStatus_t *systemDebugFindTaskStatusByHandle(const TaskStatus_t *taskStatusArray,
-    UBaseType_t taskCount,
-    TaskHandle_t taskHandle)
+static const TaskStatus_t *systemDebugFindTaskStatusByHandle(const TaskStatus_t *taskStatusArray, UBaseType_t taskCount, TaskHandle_t taskHandle)
 {
     UBaseType_t lIndex;
 
@@ -91,10 +78,7 @@ static const TaskStatus_t *systemDebugFindTaskStatusByHandle(const TaskStatus_t 
     return NULL;
 }
 
-static bool systemDebugCaptureTaskUsageSnapshot(TaskStatus_t *taskStatusArray,
-    UBaseType_t capacity,
-    UBaseType_t *taskCount,
-    uint32_t *totalRunTime)
+static bool systemDebugCaptureTaskUsageSnapshot(TaskStatus_t *taskStatusArray, UBaseType_t capacity, UBaseType_t *taskCount, uint32_t *totalRunTime)
 {
     UBaseType_t lTaskCount;
 
@@ -117,13 +101,7 @@ static bool systemDebugCaptureTaskUsageSnapshot(TaskStatus_t *taskStatusArray,
     return true;
 }
 
-static eConsoleCommandResult systemDebugReplyTaskUsageSample(uint32_t transport,
-    uint32_t sampleIndex,
-    const TaskStatus_t *currentTaskStats,
-    UBaseType_t currentTaskCount,
-    const TaskStatus_t *previousTaskStats,
-    UBaseType_t previousTaskCount,
-    uint32_t totalRunTimeDelta)
+static eConsoleCommandResult systemDebugReplyTaskUsageSample(uint32_t transport, uint32_t sampleIndex, const TaskStatus_t *currentTaskStats, UBaseType_t currentTaskCount, const TaskStatus_t *previousTaskStats, UBaseType_t previousTaskCount, uint32_t totalRunTimeDelta)
 {
     UBaseType_t lIndex;
 
@@ -335,3 +313,4 @@ bool systemDebugConsoleRegister(void)
 #endif
 }
 /**************************End of file********************************/
+

@@ -52,18 +52,8 @@ typedef struct stMpu6050PortIicBinding {
 } stMpu6050PortIicBinding;
 
 typedef eMpu6050DrvIicStatus (*mpu6050PortIicInitFunc)(uint8_t bus);
-typedef eMpu6050DrvIicStatus (*mpu6050PortIicWriteRegisterFunc)(uint8_t bus,
-                                                                uint8_t address,
-                                                                const uint8_t *registerBuffer,
-                                                                uint16_t registerLength,
-                                                                const uint8_t *buffer,
-                                                                uint16_t length);
-typedef eMpu6050DrvIicStatus (*mpu6050PortIicReadRegisterFunc)(uint8_t bus,
-                                                               uint8_t address,
-                                                               const uint8_t *registerBuffer,
-                                                               uint16_t registerLength,
-                                                               uint8_t *buffer,
-                                                               uint16_t length);
+typedef eMpu6050DrvIicStatus (*mpu6050PortIicWriteRegisterFunc)(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
+typedef eMpu6050DrvIicStatus (*mpu6050PortIicReadRegisterFunc)(uint8_t bus, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
 
 typedef struct stMpu6050PortIicInterface {
     mpu6050PortIicInitFunc init;
@@ -85,3 +75,4 @@ void mpu6050PortDelayMs(uint32_t delayMs);
 
 #endif  // MPU6050_PORT_H
 /**************************End of file********************************/
+

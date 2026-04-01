@@ -18,26 +18,17 @@ typedef struct stCommPacketParserHeaderSearchResult {
 
 static uint32_t commPacketParserMinU32(uint32_t left, uint32_t right);
 static uint32_t commPacketParserToPhysicalIndex(const stRingBuffer *ringBuffer, uint32_t logicalIndex);
-static uint32_t commPacketParserPeekOffset(const stRingBuffer *ringBuffer,
-                                           uint32_t offset,
-                                           uint8_t *buffer,
-                                           uint32_t length);
+static uint32_t commPacketParserPeekOffset(const stRingBuffer *ringBuffer, uint32_t offset, uint8_t *buffer, uint32_t length);
 static bool commPacketParserPeekByteAt(const stRingBuffer *ringBuffer, uint32_t offset, uint8_t *value);
 static bool commPacketParserIsHeaderMatchAt(const stCommPacketParser *parser, uint32_t offset);
 static uint32_t commPacketParserFindPartialHeaderLength(const stCommPacketParser *parser, uint32_t usedLength);
-static stCommPacketParserHeaderSearchResult commPacketParserSearchHeader(const stCommPacketParser *parser,
-                                                                         uint32_t usedLength);
+static stCommPacketParserHeaderSearchResult commPacketParserSearchHeader(const stCommPacketParser *parser, uint32_t usedLength);
 static void commPacketParserClearPendingState(stCommPacketParser *parser);
 static uint32_t commPacketParserGetTickMs(const stCommPacketParser *parser);
 static bool commPacketParserIsPacketTimedOut(const stCommPacketParser *parser);
 static bool commPacketParserResolveOffset(uint32_t packetLength, int32_t offset, uint32_t *resolvedOffset);
-static bool commPacketParserGetPacketCrcValue(const stCommPacketParserConfig *config,
-                                              const uint8_t *packetBuffer,
-                                              uint32_t packetLength,
-                                              uint32_t *packetCrcValue);
-static bool commPacketParserCheckPacketCrc(const stCommPacketParserConfig *config,
-                                           const uint8_t *packetBuffer,
-                                           uint32_t packetLength);
+static bool commPacketParserGetPacketCrcValue(const stCommPacketParserConfig *config, const uint8_t *packetBuffer, uint32_t packetLength, uint32_t *packetCrcValue);
+static bool commPacketParserCheckPacketCrc(const stCommPacketParserConfig *config, const uint8_t *packetBuffer, uint32_t packetLength);
 
 static uint32_t commPacketParserMinU32(uint32_t left, uint32_t right)
 {
@@ -53,10 +44,7 @@ static uint32_t commPacketParserToPhysicalIndex(const stRingBuffer *ringBuffer, 
     return logicalIndex % ringBuffer->capacity;
 }
 
-static uint32_t commPacketParserPeekOffset(const stRingBuffer *ringBuffer,
-                                           uint32_t offset,
-                                           uint8_t *buffer,
-                                           uint32_t length)
+static uint32_t commPacketParserPeekOffset(const stRingBuffer *ringBuffer, uint32_t offset, uint8_t *buffer, uint32_t length)
 {
     uint32_t lUsedLength;
     uint32_t lReadLength;
@@ -144,8 +132,7 @@ static uint32_t commPacketParserFindPartialHeaderLength(const stCommPacketParser
     return 0U;
 }
 
-static stCommPacketParserHeaderSearchResult commPacketParserSearchHeader(const stCommPacketParser *parser,
-                                                                         uint32_t usedLength)
+static stCommPacketParserHeaderSearchResult commPacketParserSearchHeader(const stCommPacketParser *parser, uint32_t usedLength)
 {
     stCommPacketParserHeaderSearchResult lResult = {0U, 0U, false};
     uint32_t lOffset;
@@ -223,10 +210,7 @@ static bool commPacketParserResolveOffset(uint32_t packetLength, int32_t offset,
     return true;
 }
 
-static bool commPacketParserGetPacketCrcValue(const stCommPacketParserConfig *config,
-                                              const uint8_t *packetBuffer,
-                                              uint32_t packetLength,
-                                              uint32_t *packetCrcValue)
+static bool commPacketParserGetPacketCrcValue(const stCommPacketParserConfig *config, const uint8_t *packetBuffer, uint32_t packetLength, uint32_t *packetCrcValue)
 {
     uint32_t lFieldOffset;
     uint32_t lIndex;
@@ -257,9 +241,7 @@ static bool commPacketParserGetPacketCrcValue(const stCommPacketParserConfig *co
     return true;
 }
 
-static bool commPacketParserCheckPacketCrc(const stCommPacketParserConfig *config,
-                                           const uint8_t *packetBuffer,
-                                           uint32_t packetLength)
+static bool commPacketParserCheckPacketCrc(const stCommPacketParserConfig *config, const uint8_t *packetBuffer, uint32_t packetLength)
 {
     uint32_t lRangeStart;
     uint32_t lRangeEnd;
@@ -306,9 +288,7 @@ bool commPacketParserIsConfigValid(const stCommPacketParserConfig *config)
     return true;
 }
 
-eCommPacketParserStatus commPacketParserInit(stCommPacketParser *parser,
-                                             stRingBuffer *ringBuffer,
-                                             const stCommPacketParserConfig *config)
+eCommPacketParserStatus commPacketParserInit(stCommPacketParser *parser, stRingBuffer *ringBuffer, const stCommPacketParserConfig *config)
 {
     if ((parser == NULL) || (ringBuffer == NULL) || (!commPacketParserIsConfigValid(config))) {
         return COMM_PACKET_PARSER_INVALID_ARGUMENT;
@@ -333,8 +313,7 @@ void commPacketParserReset(stCommPacketParser *parser)
     commPacketParserClearPendingState(parser);
 }
 
-eCommPacketParserStatus commPacketParserProcess(stCommPacketParser *parser,
-                                                stCommPacketParserPacket *packet)
+eCommPacketParserStatus commPacketParserProcess(stCommPacketParser *parser, stCommPacketParserPacket *packet)
 {
     eCommPacketParserStatus lLastStatus = COMM_PACKET_PARSER_OK;
     uint32_t lUsedLength;
@@ -508,3 +487,4 @@ void commPacketParserReleasePacket(stCommPacketParser *parser)
     parser->hasReadyPacket = false;
 }
 /**************************End of file********************************/
+
