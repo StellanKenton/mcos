@@ -8,7 +8,6 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "drvgpio.h"
-#include "drvgpio_debug.h"
 
 #if (DRVGPIO_LOG_SUPPORT == 1)
 #include "../../Console/log.h"
@@ -79,10 +78,16 @@ void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
     }
 
     if ((state != DRVGPIO_PIN_RESET) && (state != DRVGPIO_PIN_SET)) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "Invalid GPIO state: %d", state);
+        #endif
         return;
     }
 
     if (gDrvGpioBspInterface.write == NULL) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "GPIO write hook is not configured");
+        #endif
         return;
     }
 
@@ -100,10 +105,16 @@ eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
     eDrvGpioPinState lState;
 
     if (!drvGpioIsValidPin(pin)) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "Invalid GPIO pin: %d", pin);
+        #endif
         return DRVGPIO_PIN_STATE_INVALID;
     }
 
     if (gDrvGpioBspInterface.read == NULL) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "GPIO read hook is not configured");
+        #endif
         return DRVGPIO_PIN_STATE_INVALID;
     }
 
@@ -122,16 +133,22 @@ void drvGpioToggle(eDrvGpioPinMap pin)
     eDrvGpioPinState lTargetState;
 
     if (!drvGpioIsValidPin(pin)) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_E(DRVGPIO_LOG_TAG, "Invalid GPIO pin: %d", pin);
+        #endif
         return;
     }
 
     if (gDrvGpioBspInterface.toggle == NULL) {
+        #if (DRVGPIO_LOG_SUPPORT == 1)
+        LOG_W(DRVGPIO_LOG_TAG, "GPIO toggle hook is not configured, using read/write fallback");
+        #endif
         lTargetState = (drvGpioRead(pin) == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET : DRVGPIO_PIN_SET;
         drvGpioWrite(pin, lTargetState);
         return;
     }
 
-    // bsp toggle function 
+    // bsp toggle function
     gDrvGpioBspInterface.toggle(pin);
 }
 

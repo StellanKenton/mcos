@@ -13,9 +13,27 @@
 
 #if (DRVGPIO_CONSOLE_SUPPORT == 1)
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "console.h"
+
+typedef struct stDrvGpioDebugPinDescriptor {
+    eDrvGpioPinMap pin;
+    const char *pinName;
+    const char *aliasCommandName;
+    const char *aliasHelpText;
+    bool isReadable;
+    bool isWritable;
+    bool isToggleSupported;
+} stDrvGpioDebugPinDescriptor;
+
+typedef struct stDrvGpioConsoleAliasCommand {
+    stConsoleCommand command;
+    const stDrvGpioDebugPinDescriptor *pinDescriptor;
+} stDrvGpioConsoleAliasCommand;
+
+#define DRVGPIO_DEBUG_PIN_COUNT  ((uint32_t)(sizeof(gDrvGpioDebugPins) / sizeof(gDrvGpioDebugPins[0])))
 
 static const stDrvGpioDebugPinDescriptor *drvGpioDebugFindPinByName(const char *pinName);
 static const stDrvGpioConsoleAliasCommand *drvGpioDebugFindAliasCommand(const char *commandName);

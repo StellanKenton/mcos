@@ -11,7 +11,6 @@
 #define DRVGPIO_H
 
 #include <stdbool.h>
-#include <stdint.h>
 #include "drvgpio_port.h"
 
 #ifdef __cplusplus

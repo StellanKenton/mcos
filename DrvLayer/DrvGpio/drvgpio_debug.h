@@ -12,28 +12,9 @@
 
 #include <stdbool.h>
 
-#include "console.h"
-#include "drvgpio.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct stDrvGpioDebugPinDescriptor {
-    eDrvGpioPinMap pin;
-    const char *pinName;
-    const char *aliasCommandName;
-    const char *aliasHelpText;
-    bool isReadable;
-    bool isWritable;
-    bool isToggleSupported;
-} stDrvGpioDebugPinDescriptor;
-
-typedef struct stDrvGpioConsoleAliasCommand {
-    stConsoleCommand command;
-    const stDrvGpioDebugPinDescriptor *pinDescriptor;
-} stDrvGpioConsoleAliasCommand;
-
-#define DRVGPIO_DEBUG_PIN_COUNT  ((uint32_t)(sizeof(gDrvGpioDebugPins) / sizeof(gDrvGpioDebugPins[0])))
 
 bool drvGpioDebugConsoleRegister(void);
 
