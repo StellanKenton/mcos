@@ -44,7 +44,6 @@ typedef struct stDrvAnlogIicBspInterface {
     drvAnlogIicBspReadLineFunc readSda;
     drvAnlogIicBspDelayUsFunc delayUs;
     uint16_t halfPeriodUs;
-    uint16_t clockStretchTimeoutUs;
     uint8_t recoveryClockCount;
 } stDrvAnlogIicBspInterface;
 

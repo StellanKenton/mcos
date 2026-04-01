@@ -1,8 +1,8 @@
 /***********************************************************************************
 * @file     : drvanlogiic_port.c
 * @brief    : Software IIC port-layer BSP binding implementation.
-* @details  : This file owns the project-level bus map and must be updated with
-*             board-specific SDA and SCL hooks before the bus can be used.
+* @details  : This file keeps the project-level logical bus table and binds each
+*             enabled bus to its BSP implementation.
 * @author   : GitHub Copilot
 * @date     : 2026-04-01
 * @version  : V1.0.0
@@ -10,18 +10,17 @@
 **********************************************************************************/
 #include "drvanlogiic.h"
 
-#include <stddef.h>
+#include "bspanlogiic.h"
 
 stDrvAnlogIicBspInterface gDrvAnlogIicBspInterface[DRVANLOGIIC_MAX] = {
     [DRVANLOGIIC_BUS0] = {
-        .init = NULL,
-        .setScl = NULL,
-        .setSda = NULL,
-        .readScl = NULL,
-        .readSda = NULL,
-        .delayUs = NULL,
+        .init = bspAnlogIicInit,
+        .setScl = bspAnlogIicSetScl,
+        .setSda = bspAnlogIicSetSda,
+        .readScl = bspAnlogIicReadScl,
+        .readSda = bspAnlogIicReadSda,
+        .delayUs = bspAnlogIicDelayUs,
         .halfPeriodUs = DRVANLOGIIC_DEFAULT_HALF_PERIOD_US,
-        .clockStretchTimeoutUs = DRVANLOGIIC_DEFAULT_STRETCH_TIMEOUT_US,
         .recoveryClockCount = DRVANLOGIIC_DEFAULT_RECOVERY_CLOCKS,
     },
 };

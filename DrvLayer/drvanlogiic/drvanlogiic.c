@@ -117,15 +117,6 @@ static uint16_t drvAnlogIicGetHalfPeriodUs(const stDrvAnlogIicBspInterface *bspI
     return bspInterface->halfPeriodUs;
 }
 
-static uint16_t drvAnlogIicGetStretchTimeoutUs(const stDrvAnlogIicBspInterface *bspInterface)
-{
-    if ((bspInterface == NULL) || (bspInterface->clockStretchTimeoutUs == 0U)) {
-        return DRVANLOGIIC_DEFAULT_STRETCH_TIMEOUT_US;
-    }
-
-    return bspInterface->clockStretchTimeoutUs;
-}
-
 static uint8_t drvAnlogIicGetRecoveryClockCount(const stDrvAnlogIicBspInterface *bspInterface)
 {
     if ((bspInterface == NULL) || (bspInterface->recoveryClockCount == 0U)) {
@@ -143,24 +134,11 @@ static void drvAnlogIicDelayHalfPeriod(const stDrvAnlogIicBspInterface *bspInter
 static eDrvAnlogIicStatus drvAnlogIicWaitSclHigh(eDrvAnlogIicPortMap iic,
                                                  stDrvAnlogIicBspInterface *bspInterface)
 {
-    uint16_t lTimeoutUs;
-
     if (bspInterface == NULL) {
         return DRVANLOGIIC_STATUS_NOT_READY;
     }
 
-    lTimeoutUs = drvAnlogIicGetStretchTimeoutUs(bspInterface);
     bspInterface->setScl(iic, true);
-
-    while (!bspInterface->readScl(iic)) {
-        if (lTimeoutUs == 0U) {
-            return DRVANLOGIIC_STATUS_TIMEOUT;
-        }
-
-        bspInterface->delayUs(1U);
-        lTimeoutUs--;
-    }
-
     return DRVANLOGIIC_STATUS_OK;
 }
 
