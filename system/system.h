@@ -51,7 +51,6 @@ void systemSetMode(eSystemMode mode);
 const char *systemGetModeString(eSystemMode mode);
 const char *systemGetFirmwareVersion(void);
 const char *systemGetHardwareVersion(void);
-bool systemConsoleRegister(void);
 #ifdef __cplusplus
 }
 #endif

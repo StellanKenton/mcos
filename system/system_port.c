@@ -15,6 +15,7 @@
 #include "task.h"
 #include "gd32f4xx_gpio.h"
 #include "system.h"
+#include "system_debug.h"
 #include "sys_int.h"
 
 static TaskHandle_t gSensorTaskHandle = NULL;
@@ -165,7 +166,7 @@ static bool initializeConsole(void)
         return false;
     }
 
-    if (!systemConsoleRegister()) {
+    if (!systemDebugConsoleRegister()) {
         LOG_E(SYSTEM_TAG, "Register system console command failed");
         return false;
     }
