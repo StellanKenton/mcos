@@ -23,19 +23,12 @@
 
 #define SENSOR_TASK_TAG "SensorTask"
 
-#if (MPU6050_IIC_INTERFACE == MPU6050_IIC_INTERFACE_HARDWARE)
-#define sensorDrvIicInit                drvIicInit
-#define sensorDrvIicReadRegister        drvIicReadRegister
-#else
-#define sensorDrvIicInit                drvAnlogIicInit
-#define sensorDrvIicReadRegister        drvAnlogIicReadRegister
-#endif
-
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
 static TaskHandle_t gGuardTaskHandle = NULL;
 static TaskHandle_t gPowerTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
+static stMpu6050Device gSensorMpu6050Device;
 
 static void process(void);
 static BaseType_t createTask(TaskFunction_t taskFunction,
@@ -51,7 +44,6 @@ static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
 static bool initializeConsole(void);
 static eMpu6050Status initializeSensorMpu6050(void);
-static eMpu6050DrvIicStatus readSensorWhoAmI(uint8_t address, uint8_t *deviceId);
 
 static void process(void)
 {
@@ -248,11 +240,13 @@ static void sensorTaskCallback(void *parameter)
             lSampleCount = 0U;
             lDelayMs = lSensorReady ? SENSOR_TASK_PERIOD_MS : SENSOR_TASK_INIT_RETRY_PERIOD_MS;
         } else {
-            lStatus = mpu6050ReadRawSample(&lSample);
+            lStatus = mpu6050ReadRawSample(&gSensorMpu6050Device, &lSample);
             if (lStatus == MPU6050_STATUS_OK) {
                 ++lSampleCount;
                 if ((!lWhoAmIReported) && (lSampleCount >= 10U)) {
-                    lStatus = mpu6050ReadRegister(MPU6050_REG_WHO_AM_I, &lWhoAmI);
+                    lStatus = mpu6050ReadRegister(&gSensorMpu6050Device,
+                                                  MPU6050_REG_WHO_AM_I,
+                                                  &lWhoAmI);
                     if (lStatus == MPU6050_STATUS_OK) {
                         LOG_I(SENSOR_TASK_TAG, "WHO_AM_I recheck=0x%02X", (unsigned int)lWhoAmI);
                         lWhoAmIReported = true;
@@ -288,8 +282,7 @@ static void sensorTaskCallback(void *parameter)
 
 static eMpu6050Status initializeSensorMpu6050(void)
 {
-    stMpu6050Config lMpu6050Config;
-    eMpu6050DrvIicStatus lIicStatus;
+    stMpu6050Device lMpu6050Device;
     uint8_t lWhoAmI = 0U;
     uint8_t lAddressIndex;
     const uint8_t lProbeAddressList[2] = {
@@ -298,71 +291,50 @@ static eMpu6050Status initializeSensorMpu6050(void)
     };
     eMpu6050Status lStatus;
 
-    mpu6050GetDefaultConfig(&lMpu6050Config);
+    mpu6050GetDefaultConfig(&lMpu6050Device);
 
     for (lAddressIndex = 0U; lAddressIndex < 2U; ++lAddressIndex) {
-        lMpu6050Config.address = lProbeAddressList[lAddressIndex];
-        lIicStatus = readSensorWhoAmI(lMpu6050Config.address, &lWhoAmI);
-        if (lIicStatus == MPU6050_DRV_IIC_STATUS_NACK) {
+        lMpu6050Device.address = lProbeAddressList[lAddressIndex];
+        lStatus = mpu6050ReadWhoAmI(&lMpu6050Device, &lWhoAmI);
+        if (lStatus == MPU6050_STATUS_NACK) {
             continue;
         }
 
-        if (lIicStatus != MPU6050_DRV_IIC_STATUS_OK) {
+        if (lStatus != MPU6050_STATUS_OK) {
             LOG_E(SENSOR_TASK_TAG,
                   "Probe addr=0x%02X failed: %d",
-                  (unsigned int)lMpu6050Config.address,
-                  (int)lIicStatus);
-            return MPU6050_STATUS_ERROR;
+                  (unsigned int)lMpu6050Device.address,
+                  (int)lStatus);
+            return lStatus;
         }
 
         LOG_I(SENSOR_TASK_TAG,
               "Probe addr=0x%02X who_am_i=0x%02X",
-              (unsigned int)lMpu6050Config.address,
+              (unsigned int)lMpu6050Device.address,
               (unsigned int)lWhoAmI);
         if ((lWhoAmI != MPU6050_WHO_AM_I_EXPECTED) &&
             (lWhoAmI != MPU6050_WHO_AM_I_COMPATIBLE_6500)) {
             continue;
         }
 
-        lStatus = mpu6050Init(&lMpu6050Config);
+        lStatus = mpu6050Init(&lMpu6050Device);
         if (lStatus == MPU6050_STATUS_OK) {
+            gSensorMpu6050Device = lMpu6050Device;
             LOG_I(SENSOR_TASK_TAG,
                   "MPU6050 initialized at addr=0x%02X",
-                  (unsigned int)lMpu6050Config.address);
+                  (unsigned int)lMpu6050Device.address);
             return MPU6050_STATUS_OK;
         }
 
         LOG_E(SENSOR_TASK_TAG,
               "Init MPU6050 failed at addr=0x%02X: %d",
-              (unsigned int)lMpu6050Config.address,
+              (unsigned int)lMpu6050Device.address,
               (int)lStatus);
         return lStatus;
     }
 
     LOG_E(SENSOR_TASK_TAG, "No compatible MPU6050 detected on bus");
     return MPU6050_STATUS_DEVICE_ID_MISMATCH;
-}
-
-static eMpu6050DrvIicStatus readSensorWhoAmI(uint8_t address, uint8_t *deviceId)
-{
-    uint8_t lRegisterAddress = MPU6050_REG_WHO_AM_I;
-    eMpu6050DrvIicStatus lStatus;
-
-    if (deviceId == NULL) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
-    }
-
-    lStatus = sensorDrvIicInit(MPU6050_IIC_BUS0);
-    if (lStatus != MPU6050_DRV_IIC_STATUS_OK) {
-        return lStatus;
-    }
-
-    return sensorDrvIicReadRegister(MPU6050_IIC_BUS0,
-                                    address,
-                                    &lRegisterAddress,
-                                    1U,
-                                    deviceId,
-                                    1U);
 }
 
 static void consoleTaskCallback(void *parameter)

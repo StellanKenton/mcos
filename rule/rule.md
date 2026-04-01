@@ -62,7 +62,7 @@ if (x) {
 - 当类型安全和可读性重要时，优先使用 `static inline` 辅助函数而不是函数式宏
 - `NULL` 仅用于空指针；不要用 `0` 表达指针语义
 - 结构体名使用 `st` 前缀，枚举名使用 `e` 前缀，全局变量和静态变量使用 `g` 前缀，以便在混合嵌入式代码中清晰表达类型意图，剩余部分使用 camelCase
-- 函数使用驼峰法命名，前缀使用模块名，system_port文件里的函数除外；例如 `uartInit`、`wifiConnect` 或 `motorSetSpeed`
+- 函数使用驼峰法命名，前缀使用模块名，可以缩写模块名不要太长，system_port文件里的函数除外；例如 `uartInit`、`wifiConnect` 或 `motorSetSpeed`
 
 ### 7.2 模块与文件设计
 - 一个源文件应只实现一个清晰的模块职责

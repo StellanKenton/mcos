@@ -14,42 +14,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MPU6050_IIC_INTERFACE_SOFTWARE    1
-#define MPU6050_IIC_INTERFACE_HARDWARE    2
-
-#ifndef MPU6050_IIC_INTERFACE
-#define MPU6050_IIC_INTERFACE             MPU6050_IIC_INTERFACE_HARDWARE
-#endif
-
-#if (MPU6050_IIC_INTERFACE == MPU6050_IIC_INTERFACE_HARDWARE)
-#include "drviic.h"
-typedef eDrvIicPortMap eMpu6050IicPort;
-#define MPU6050_IIC_BUS0                  DRVIIC_BUS0
-#define MPU6050_IIC_MAX                   DRVIIC_MAX
-typedef eDrvIicStatus eMpu6050DrvIicStatus;
-#define MPU6050_DRV_IIC_STATUS_OK         DRVIIC_STATUS_OK
-#define MPU6050_DRV_IIC_STATUS_INVALID_PARAM DRVIIC_STATUS_INVALID_PARAM
-#define MPU6050_DRV_IIC_STATUS_NOT_READY  DRVIIC_STATUS_NOT_READY
-#define MPU6050_DRV_IIC_STATUS_BUSY       DRVIIC_STATUS_BUSY
-#define MPU6050_DRV_IIC_STATUS_TIMEOUT    DRVIIC_STATUS_TIMEOUT
-#define MPU6050_DRV_IIC_STATUS_NACK       DRVIIC_STATUS_NACK
-#define MPU6050_DRV_IIC_STATUS_UNSUPPORTED DRVIIC_STATUS_UNSUPPORTED
-#define MPU6050_DRV_IIC_STATUS_ERROR      DRVIIC_STATUS_ERROR
-#else
-#include "drvanlogiic.h"
-typedef eDrvAnlogIicPortMap eMpu6050IicPort;
-#define MPU6050_IIC_BUS0                  DRVANLOGIIC_BUS0
-#define MPU6050_IIC_MAX                   DRVANLOGIIC_MAX
-typedef eDrvAnlogIicStatus eMpu6050DrvIicStatus;
-#define MPU6050_DRV_IIC_STATUS_OK         DRVANLOGIIC_STATUS_OK
-#define MPU6050_DRV_IIC_STATUS_INVALID_PARAM DRVANLOGIIC_STATUS_INVALID_PARAM
-#define MPU6050_DRV_IIC_STATUS_NOT_READY  DRVANLOGIIC_STATUS_NOT_READY
-#define MPU6050_DRV_IIC_STATUS_BUSY       DRVANLOGIIC_STATUS_BUSY
-#define MPU6050_DRV_IIC_STATUS_TIMEOUT    DRVANLOGIIC_STATUS_TIMEOUT
-#define MPU6050_DRV_IIC_STATUS_NACK       DRVANLOGIIC_STATUS_NACK
-#define MPU6050_DRV_IIC_STATUS_UNSUPPORTED DRVANLOGIIC_STATUS_UNSUPPORTED
-#define MPU6050_DRV_IIC_STATUS_ERROR      DRVANLOGIIC_STATUS_ERROR
-#endif
+#include "mpu6050_port.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,8 +38,6 @@ extern "C" {
 #define MPU6050_PWR1_SLEEP_BIT           0x40U
 #define MPU6050_PWR1_CLKSEL_PLL_XGYRO    0x01U
 
-#define MPU6050_RESET_DELAY_MS           100U
-#define MPU6050_WAKE_DELAY_MS            10U
 #define MPU6050_SAMPLE_BYTES             14U
 
 typedef enum eMpu6050Status {
@@ -104,19 +67,15 @@ typedef enum eMpu6050GyroRange {
     MPU6050_GYRO_RANGE_MAX,
 } eMpu6050GyroRange;
 
-typedef struct stMpu6050Config {
-    eMpu6050IicPort iic;
+typedef struct stMpu6050Device {
+    stMpu6050PortIicBinding iicBinding;
     uint8_t address;
     uint8_t sampleRateDivider;
     uint8_t dlpfConfig;
+    bool isOnline;
     eMpu6050AccelRange accelRange;
     eMpu6050GyroRange gyroRange;
-} stMpu6050Config;
-
-typedef struct stMpu6050Context {
-    stMpu6050Config config;
-    bool isInitialized;
-} stMpu6050Context;
+} stMpu6050Device;
 
 typedef struct stMpu6050RawSample {
     int16_t accelX;
@@ -128,15 +87,15 @@ typedef struct stMpu6050RawSample {
     int16_t gyroZ;
 } stMpu6050RawSample;
 
-void mpu6050GetDefaultConfig(stMpu6050Config *config);
-eMpu6050Status mpu6050Init(const stMpu6050Config *config);
-bool mpu6050IsReady(void);
-eMpu6050Status mpu6050ReadWhoAmI(uint8_t *deviceId);
-eMpu6050Status mpu6050ReadRegister(uint8_t registerAddress, uint8_t *value);
-eMpu6050Status mpu6050WriteRegister(uint8_t registerAddress, uint8_t value);
-eMpu6050Status mpu6050SetSleepEnabled(bool enable);
-eMpu6050Status mpu6050ReadRawSample(stMpu6050RawSample *sample);
-eMpu6050Status mpu6050ReadTemperatureCentiDegC(int32_t *temperatureCentiDegC);
+void mpu6050GetDefaultConfig(stMpu6050Device *device);
+eMpu6050Status mpu6050Init(stMpu6050Device *device);
+bool mpu6050IsReady(const stMpu6050Device *device);
+eMpu6050Status mpu6050ReadWhoAmI(stMpu6050Device *device, uint8_t *deviceId);
+eMpu6050Status mpu6050ReadRegister(stMpu6050Device *device, uint8_t registerAddress, uint8_t *value);
+eMpu6050Status mpu6050WriteRegister(stMpu6050Device *device, uint8_t registerAddress, uint8_t value);
+eMpu6050Status mpu6050SetSleepEnabled(stMpu6050Device *device, bool enable);
+eMpu6050Status mpu6050ReadRawSample(stMpu6050Device *device, stMpu6050RawSample *sample);
+eMpu6050Status mpu6050ReadTemperatureCentiDegC(stMpu6050Device *device, int32_t *temperatureCentiDegC);
 
 #ifdef __cplusplus
 }
