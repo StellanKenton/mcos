@@ -68,11 +68,11 @@ typedef enum eMpu6050GyroRange {
 } eMpu6050GyroRange;
 
 typedef struct stMpu6050Device {
-    stMpu6050PortIicBinding iicBinding;
+    stMpu6050PortIicBinding iicBind;
     uint8_t address;
-    uint8_t sampleRateDivider;
-    uint8_t dlpfConfig;
-    bool isOnline;
+    uint8_t sampleRateDiv;
+    uint8_t dlpfCfg;
+    bool isReady;
     eMpu6050AccelRange accelRange;
     eMpu6050GyroRange gyroRange;
 } stMpu6050Device;
@@ -87,15 +87,15 @@ typedef struct stMpu6050RawSample {
     int16_t gyroZ;
 } stMpu6050RawSample;
 
-void mpu6050GetDefaultConfig(stMpu6050Device *device);
+void mpu6050GetDefCfg(stMpu6050Device *device);
 eMpu6050Status mpu6050Init(stMpu6050Device *device);
 bool mpu6050IsReady(const stMpu6050Device *device);
-eMpu6050Status mpu6050ReadWhoAmI(stMpu6050Device *device, uint8_t *deviceId);
-eMpu6050Status mpu6050ReadRegister(stMpu6050Device *device, uint8_t registerAddress, uint8_t *value);
-eMpu6050Status mpu6050WriteRegister(stMpu6050Device *device, uint8_t registerAddress, uint8_t value);
-eMpu6050Status mpu6050SetSleepEnabled(stMpu6050Device *device, bool enable);
-eMpu6050Status mpu6050ReadRawSample(stMpu6050Device *device, stMpu6050RawSample *sample);
-eMpu6050Status mpu6050ReadTemperatureCentiDegC(stMpu6050Device *device, int32_t *temperatureCentiDegC);
+eMpu6050Status mpu6050ReadId(stMpu6050Device *device, uint8_t *devId);
+eMpu6050Status mpu6050ReadReg(stMpu6050Device *device, uint8_t regAddr, uint8_t *value);
+eMpu6050Status mpu6050WriteReg(stMpu6050Device *device, uint8_t regAddr, uint8_t value);
+eMpu6050Status mpu6050SetSleep(stMpu6050Device *device, bool enable);
+eMpu6050Status mpu6050ReadRaw(stMpu6050Device *device, stMpu6050RawSample *sample);
+eMpu6050Status mpu6050ReadTempCdC(stMpu6050Device *device, int32_t *tempCdC);
 
 #ifdef __cplusplus
 }

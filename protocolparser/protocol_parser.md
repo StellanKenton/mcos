@@ -35,11 +35,11 @@
 解析器需要以下输入：
 
 - 一个保存接收字节流的环形缓冲区实例。
-- 一个固定包头长度
-- 一个固定包头数据
-- 一个校验计算函数。
-- 校验数据的起始字节和结束字节位置。
-- 一个用于计算总包长的函数。
+- 一个 `receiveFormat`，用于描述接收方向的包头、长度规则和 CRC 规则。
+- 一个 `sendFormat`，用于描述发送方向的包头、总包长规则和 CRC 回填规则。
+- 一个 `runtimeConfig`，用于描述接收输出缓冲区、等待超时和 tick 获取函数。
+- 一个用于计算接收总包长的函数。
+- 一个用于构造发送包头或回填发送辅助字段的函数。
 
 
 ### 3.2 输出
@@ -47,6 +47,8 @@
 解析器每次成功解析时，输出一个完整且通过校验的数据包。
 上层可以修改标志位，表示自己已经使用完解析后的数据，随后解析器才可以开始解析下一包数据。
 如果解析器当前无法产出一个完整有效的数据包，则返回对应状态码，并且不影响上层协议层的处理状态。
+
+发送侧在上层提供负载后，按当前选中的 `sendFormat` 生成完整发送数据包，并将结果写入调用方提供的发送缓冲区。
 
 ## 4. 核心解析流程
 
@@ -110,30 +112,81 @@
 - 对于合法候选包，返回值必须处于 `[minPacketLength, maxPacketLength]` 范围内。
 - 返回长度必须包含包头、负载和 CRC 字段。
 
-## 7. 创建一个解析器port文件用来创建不同的协议和存放校验函数以及输出缓存等。
+## 7. 帧格式拆分
 
-## 8. 错误处理
+为了同时支持接收和发送，并允许两者包头不一致，协议定义应拆分为三个对象：
+
+- `receiveFormat`：只描述接收包头、接收长度判断、接收 CRC 提取与校验规则。
+- `sendFormat`：只描述发送包头、发送总长度计算、发送字段回填与 CRC 写回规则。
+- `runtimeConfig`：只描述实例级输出缓冲区、等待超时和 tick 钩子。
+
+这样拆分后：
+
+- port 层可以维护“协议格式数组”，统一管理不同帧类型。
+- parser 实例可以在运行时切换当前使用的帧格式。
+- 发送逻辑不会再错误复用接收包头配置。
+- 输出缓冲区等实例资源不会被硬编码到静态协议表中。
+
+## 8. port 层建议
+
+建议在 `parser_port` 中准备一个固定槽位数组，用于保存当前项目支持的全部 `frameFormat`。
+
+推荐职责如下：
+
+- 提供 `SetFrameFormat(index, frameFormat)` 之类的注册接口。
+- 提供 `GetFrameFormat(index)` 查询接口。
+- 提供 `InitWithFrameFormat(index, runtimeConfig)` 初始化接口。
+- 提供 `SelectFrameFormat(index)` 运行时切换接口。
+- 提供 `CreatePacket(index, payload...)` 发送包构建接口。
+
+这样上层协议只需要知道自己使用哪个格式槽位，而不需要直接管理底层解析器细节。
+
+## 9. 发送流程
+
+建议发送公共函数遵循以下顺序：
+
+1. 读取当前选中的 `sendFormat`。
+2. 生成或拷贝发送包头。
+3. 根据包头长度和负载长度计算总包长。
+4. 将负载拷贝到发送缓冲区。
+5. 回填长度字段或其他发送辅助字段。
+6. 计算 CRC 并写回 CRC 字段。
+7. 将完整数据包长度返回给上层发送驱动。
+
+这样做可以保证：
+
+- 发送头和接收头解耦。
+- 长度字段和 CRC 字段不会散落在业务层重复实现。
+- 上层只需要准备 payload 和发送缓冲区。
+
+## 10. 错误处理
 
 建议的状态码如下：
 
 ```c
-typedef enum eCommPacketParserStatus {
-    COMM_PACKET_PARSER_OK = 0,
-    COMM_PACKET_PARSER_EMPTY,
-    COMM_PACKET_PARSER_NEED_MORE_DATA,
-    COMM_PACKET_PARSER_INVALID_ARGUMENT,
-    COMM_PACKET_PARSER_HEADER_NOT_FOUND,
-    COMM_PACKET_PARSER_HEADER_INVALID,
-    COMM_PACKET_PARSER_LENGTH_INVALID,
-    COMM_PACKET_PARSER_CRC_FAILED,
-    COMM_PACKET_PARSER_OUTPUT_BUFFER_TOO_SMALL
-} eCommPacketParserStatus;
+typedef enum eFrmPsrSta {
+    FRM_PSR_OK = 0,
+    FRM_PSR_EMPTY,
+    FRM_PSR_NEED_MORE_DATA,
+    FRM_PSR_INVALID_ARG,
+    FRM_PSR_HEAD_NOT_FOUND,
+    FRM_PSR_HEAD_INVALID,
+    FRM_PSR_LEN_INVALID,
+    FRM_PSR_CRC_FAIL,
+    FRM_PSR_OUT_BUF_SMALL,
+    FRM_PSR_FMT_NOT_SEL,
+    FRM_PSR_FMT_INVALID,
+    FRM_PSR_BUILD_FAIL
+} eFrmPsrSta;
 ```
 
 建议处理规则如下：
 
-- 指针非法、回调非法或尺寸为 0 时，返回 `COMM_PACKET_PARSER_INVALID_ARGUMENT`。
-- 如果环形缓冲区为空，则返回 `COMM_PACKET_PARSER_EMPTY`。
-- 如果已经找到候选包起点，但完整数据包尚未到齐，则返回 `COMM_PACKET_PARSER_NEED_MORE_DATA`。
-- 如果输出缓冲区不足以容纳完整数据包，则返回 `COMM_PACKET_PARSER_OUTPUT_BUFFER_TOO_SMALL`。
+- 指针非法、回调非法或尺寸为 0 时，返回 `FRM_PSR_INVALID_ARG`。
+- 如果环形缓冲区为空，则返回 `FRM_PSR_EMPTY`。
+- 如果已经找到候选包起点，但完整数据包尚未到齐，则返回 `FRM_PSR_NEED_MORE_DATA`。
+- 如果输出缓冲区不足以容纳完整数据包，则返回 `FRM_PSR_OUT_BUF_SMALL`。
+- 如果实例当前没有选中任何帧格式，则返回 `FRM_PSR_FMT_NOT_SEL`。
+- 如果 port 槽位为空或帧格式定义本身不合法，则返回 `FRM_PSR_FMT_INVALID`。
+- 如果发送构包过程中的字段回填失败，则返回 `FRM_PSR_BUILD_FAIL`。
 - 如果候选数据包 CRC 校验失败，只应丢弃继续重同步所需的最小字节数。

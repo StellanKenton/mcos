@@ -232,13 +232,13 @@ static void sensorTaskCallback(void *parameter)
             lSampleCount = 0U;
             lDelayMs = lSensorReady ? SENSOR_TASK_PERIOD_MS : SENSOR_TASK_INIT_RETRY_PERIOD_MS;
         } else {
-            lStatus = mpu6050ReadRawSample(&gSensorMpu6050Device, &lSample);
+            lStatus = mpu6050ReadRaw(&gSensorMpu6050Device, &lSample);
             if (lStatus == MPU6050_STATUS_OK) {
                 ++lSampleCount;
                 if ((!lWhoAmIReported) && (lSampleCount >= 10U)) {
-                    lStatus = mpu6050ReadRegister(&gSensorMpu6050Device,
-                                                  MPU6050_REG_WHO_AM_I,
-                                                  &lWhoAmI);
+                    lStatus = mpu6050ReadReg(&gSensorMpu6050Device,
+                                             MPU6050_REG_WHO_AM_I,
+                                             &lWhoAmI);
                     if (lStatus == MPU6050_STATUS_OK) {
                         LOG_I(SENSOR_TASK_TAG, "WHO_AM_I recheck=0x%02X", (unsigned int)lWhoAmI);
                         lWhoAmIReported = true;
@@ -283,11 +283,11 @@ static eMpu6050Status initializeSensorMpu6050(void)
     };
     eMpu6050Status lStatus;
 
-    mpu6050GetDefaultConfig(&lMpu6050Device);
+    mpu6050GetDefCfg(&lMpu6050Device);
 
     for (lAddressIndex = 0U; lAddressIndex < 2U; ++lAddressIndex) {
         lMpu6050Device.address = lProbeAddressList[lAddressIndex];
-        lStatus = mpu6050ReadWhoAmI(&lMpu6050Device, &lWhoAmI);
+        lStatus = mpu6050ReadId(&lMpu6050Device, &lWhoAmI);
         if (lStatus == MPU6050_STATUS_NACK) {
             continue;
         }

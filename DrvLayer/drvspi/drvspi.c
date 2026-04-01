@@ -477,12 +477,7 @@ eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi, const uint8_t *txBuffer,
 
     lBspInterface = drvSpiGetBspInterface(spi);
     drvSpiSetCsActive(lBspInterface, true);
-    lStatus = drvSpiRawTransferLocked(spi,
-                                      txBuffer,
-                                      rxBuffer,
-                                      length,
-                                      DRVSPI_DEFAULT_READ_FILL_DATA,
-                                      timeoutMs);
+    lStatus = drvSpiRawTransferLocked(spi,txBuffer,rxBuffer,length,DRVSPI_DEFAULT_READ_FILL_DATA,timeoutMs);
     drvSpiSetCsActive(lBspInterface, false);
     drvSpiUnlockBus(spi);
     return lStatus;
