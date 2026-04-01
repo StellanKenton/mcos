@@ -159,6 +159,38 @@
         "J-Link: RTT Terminal"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "Serial: Monitor",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/vscode/serial-monitor.ps1",
+        "-PortName",
+        "${input:serialPortName}"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "clear": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPortName",
+      "type": "promptString",
+      "description": "Optional COM port for Serial: Monitor. Leave blank to use SERIAL_PORT, config, or auto-detect when only one port exists.",
+      "default": ""
     }
   ],
   "problemMatchers": [

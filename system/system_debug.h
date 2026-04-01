@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#ifndef SYSTEM_DEBUG_CONSOLE_SUPPORT
+#define SYSTEM_DEBUG_CONSOLE_SUPPORT    1
+#endif
+
 bool systemDebugConsoleRegister(void);
 
 #ifdef __cplusplus

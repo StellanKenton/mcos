@@ -35,7 +35,6 @@ void drvGpioInit(void);
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state);
 eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin);
 void drvGpioToggle(eDrvGpioPinMap pin);
-bool drvGpioConsoleRegister(void);
 
 #ifdef __cplusplus
 }

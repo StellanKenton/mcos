@@ -131,7 +131,7 @@
 建议模式如下：
 
 - `system` 模块提供类似 `systemConsoleRegister()` 的注册函数。
-- `DrvGpio` 模块提供类似 `drvGpioConsoleRegister()` 的注册函数。
+- `DrvGpio` 模块提供类似 `drvGpioDebugConsoleRegister()` 的注册函数。
 - `consoleInit()` 完成核心初始化后，由上层初始化流程显式调用这些注册函数。
 
 这样做的好处是：
@@ -348,7 +348,7 @@
 ### 15.3 业务模块层
 
 - `systemConsoleRegister()`
-- `drvGpioConsoleRegister()`
+- `drvGpioDebugConsoleRegister()`
 
 命令处理函数本身保持在所属模块内部，不暴露多余细节。
 

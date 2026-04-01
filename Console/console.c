@@ -39,6 +39,8 @@ static uint32_t gConsoleCommandCount = 0U;
 
 static uint32_t consoleGetTick(void);
 static bool consoleIsSpace(char value);
+static bool consoleIsSameString(const char *left, const char *right);
+static bool consoleIsSameCommand(const stConsoleCommand *left, const stConsoleCommand *right);
 static const stConsoleCommand *consoleFindCommand(const char *commandName);
 static void consoleResetSession(stConsoleSession *session);
 static int consoleTokenize(char *lineBuffer, char *argv[], int maxArgs);
@@ -58,6 +60,31 @@ static uint32_t consoleGetTick(void)
 static bool consoleIsSpace(char value)
 {
     return (value == ' ') || (value == '\t');
+}
+
+static bool consoleIsSameString(const char *left, const char *right)
+{
+    if (left == right) {
+        return true;
+    }
+
+    if ((left == NULL) || (right == NULL)) {
+        return false;
+    }
+
+    return strcmp(left, right) == 0;
+}
+
+static bool consoleIsSameCommand(const stConsoleCommand *left, const stConsoleCommand *right)
+{
+    if ((left == NULL) || (right == NULL)) {
+        return false;
+    }
+
+    return consoleIsSameString(left->commandName, right->commandName) &&
+        consoleIsSameString(left->helpText, right->helpText) &&
+        consoleIsSameString(left->ownerTag, right->ownerTag) &&
+        (left->handler == right->handler);
 }
 
 static const stConsoleCommand *consoleFindCommand(const char *commandName)
@@ -271,6 +298,8 @@ bool consoleInit(void)
 
 bool consoleRegisterCommand(const stConsoleCommand *command)
 {
+    const stConsoleCommand *lExistingCommand = NULL;
+
     if ((command == NULL) ||
         (command->commandName == NULL) ||
         (command->commandName[0] == '\0') ||
@@ -282,8 +311,9 @@ bool consoleRegisterCommand(const stConsoleCommand *command)
         return false;
     }
 
-    if (consoleFindCommand(command->commandName) != NULL) {
-        return false;
+    lExistingCommand = consoleFindCommand(command->commandName);
+    if (lExistingCommand != NULL) {
+        return consoleIsSameCommand(command, lExistingCommand);
     }
 
     if (gConsoleCommandCount >= CONSOLE_MAX_COMMANDS) {

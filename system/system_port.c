@@ -17,6 +17,7 @@
 #include "system.h"
 #include "system_debug.h"
 #include "sys_int.h"
+#include "drvgpio_debug.h"
 
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
@@ -35,7 +36,7 @@ static void consoleTaskCallback(void *parameter);
 static void guardTaskCallback(void *parameter);
 static void powerTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
-static void createTasks(void);
+static bool createTasks(void);
 static bool initializeConsole(void);
 
 static void process(void)
@@ -45,10 +46,12 @@ static void process(void)
             LOG_I(SYSTEM_TAG, "System initialized");
             systemSetMode(eSYSTEM_SELF_CHECK_MODE);
             break;
-        case eSYSTEM_SELF_CHECK_MODE:  
+        case eSYSTEM_SELF_CHECK_MODE:
+            if (!createTasks()) {
+                break;
+            }
             LOG_I(SYSTEM_TAG, "Self-check passed");
             systemSetMode(eSYSTEM_STANDBY_MODE);
-            createTasks();
             break;
         case eSYSTEM_STANDBY_MODE:
             break;
@@ -121,36 +124,55 @@ static BaseType_t createTask(TaskFunction_t taskFunction,
     return lReturn;
 }
 
-static void createTasks(void)
+static bool createTasks(void)
 {
+    bool lResult = true;
+
     if (initializeConsole()) {
-        (void)createTask(consoleTaskCallback,
+        if (pdPASS != createTask(consoleTaskCallback,
             "ConsoleTask",
             CONSOLE_TASK_STACK_SIZE,
             CONSOLE_TASK_PRIORITY,
-            &gConsoleTaskHandle);
+            &gConsoleTaskHandle)) {
+            lResult = false;
+        }
+    } else {
+        lResult = false;
     }
 
-    (void)createTask(sensorTaskCallback,
+    if (pdPASS != createTask(sensorTaskCallback,
         "SensorTask",
         SENSOR_TASK_STACK_SIZE,
         SENSOR_TASK_PRIORITY,
-        &gSensorTaskHandle);
-    (void)createTask(guardTaskCallback,
+        &gSensorTaskHandle)) {
+        lResult = false;
+    }
+
+    if (pdPASS != createTask(guardTaskCallback,
         "GuardTask",
         GUARD_TASK_STACK_SIZE,
         GUARD_TASK_PRIORITY,
-        &gGuardTaskHandle);
-    (void)createTask(powerTaskCallback,
+        &gGuardTaskHandle)) {
+        lResult = false;
+    }
+
+    if (pdPASS != createTask(powerTaskCallback,
         "PowerTask",
         POWER_TASK_STACK_SIZE,
         POWER_TASK_PRIORITY,
-        &gPowerTaskHandle);
-    (void)createTask(memoryTaskCallback,
+        &gPowerTaskHandle)) {
+        lResult = false;
+    }
+
+    if (pdPASS != createTask(memoryTaskCallback,
         "MemoryTask",
         MEMORY_TASK_STACK_SIZE,
         MEMORY_TASK_PRIORITY,
-        &gMemoryTaskHandle);
+        &gMemoryTaskHandle)) {
+        lResult = false;
+    }
+
+    return lResult;
 }
 
 static bool initializeConsole(void)
@@ -171,7 +193,7 @@ static bool initializeConsole(void)
         return false;
     }
 
-    if (!drvGpioConsoleRegister()) {
+    if (!drvGpioDebugConsoleRegister()) {
         LOG_E(SYSTEM_TAG, "Register GPIO console command failed");
         return false;
     }

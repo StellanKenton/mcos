@@ -12,6 +12,9 @@
 
 #include <stdbool.h>
 
+#include "console.h"
+#include "drvgpio.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

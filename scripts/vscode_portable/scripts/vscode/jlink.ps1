@@ -197,6 +197,82 @@ function Test-TcpPort {
     }
 }
 
+function Test-TcpListenerPortAvailable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port,
+
+        [string]$HostName = "0.0.0.0"
+    )
+
+    $ipAddress = [System.Net.IPAddress]::Parse($HostName)
+    $tcpListener = [System.Net.Sockets.TcpListener]::new($ipAddress, $Port)
+
+    try {
+        $tcpListener.Start()
+        return $true
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if ($tcpListener) {
+            $tcpListener.Stop()
+        }
+    }
+}
+
+function Get-FreeTcpPort {
+    $tcpListener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, 0)
+
+    try {
+        $tcpListener.Start()
+        return ([System.Net.IPEndPoint]$tcpListener.LocalEndpoint).Port
+    }
+    finally {
+        $tcpListener.Stop()
+    }
+}
+
+function Resolve-AvailableTcpPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$PreferredPort,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [int[]]$ReservedPorts = @(),
+
+        [int]$SearchSpan = 256
+    )
+
+    if ((-not ($ReservedPorts -contains $PreferredPort)) -and (Test-TcpListenerPortAvailable -Port $PreferredPort)) {
+        return $PreferredPort
+    }
+
+    for ($lCandidatePort = $PreferredPort + 1; $lCandidatePort -le ($PreferredPort + $SearchSpan); $lCandidatePort++) {
+        if ($ReservedPorts -contains $lCandidatePort) {
+            continue
+        }
+
+        if (Test-TcpListenerPortAvailable -Port $lCandidatePort) {
+            Write-Warning "$Name port $PreferredPort is unavailable. Using $lCandidatePort instead."
+            return $lCandidatePort
+        }
+    }
+
+    while ($true) {
+        $lFallbackPort = Get-FreeTcpPort
+        if ($ReservedPorts -contains $lFallbackPort) {
+            continue
+        }
+
+        Write-Warning "$Name port $PreferredPort is unavailable. Using fallback port $lFallbackPort instead."
+        return $lFallbackPort
+    }
+}
+
 function New-JLinkCommanderScript {
     param(
         [Parameter(Mandatory = $true)]
@@ -286,6 +362,14 @@ function Start-RttServer {
         throw "Local RTT port $RttTelnetPort is already in use. Stop the existing RTT server first."
     }
 
+    if (-not (Test-TcpListenerPortAvailable -Port $RttTelnetPort)) {
+        throw "Local RTT port $RttTelnetPort is unavailable for listening. Stop the existing process first."
+    }
+
+    $resolvedGdbPort = Resolve-AvailableTcpPort -PreferredPort $GdbPort -Name "GDB"
+    $resolvedSwoPort = Resolve-AvailableTcpPort -PreferredPort $SwoPort -Name "SWO" -ReservedPorts @($resolvedGdbPort)
+    $resolvedTelnetPort = Resolve-AvailableTcpPort -PreferredPort $TelnetPort -Name "Terminal" -ReservedPorts @($resolvedGdbPort, $resolvedSwoPort)
+
     $gdbServerExe = Get-JLinkExecutable -Name "JLinkGDBServerCL.exe"
     $arguments = @(
         "-device",
@@ -295,13 +379,14 @@ function Start-RttServer {
         "-speed",
         "$SpeedKHz",
         "-port",
-        "$GdbPort",
+        "$resolvedGdbPort",
         "-swoport",
-        "$SwoPort",
+        "$resolvedSwoPort",
         "-telnetport",
-        "$TelnetPort",
+        "$resolvedTelnetPort",
         "-RTTTelnetPort",
         "$RttTelnetPort",
+        "-nohalt",
         "-nogui"
     )
 
@@ -314,8 +399,11 @@ function Start-RttServer {
     Write-Host "Device: $Device"
     Write-Host "Interface: $Interface"
     Write-Host "Speed: ${SpeedKHz}kHz"
-    Write-Host "GDB port: $GdbPort"
+    Write-Host "GDB port: $resolvedGdbPort"
+    Write-Host "SWO port: $resolvedSwoPort"
+    Write-Host "Terminal port: $resolvedTelnetPort"
     Write-Host "RTT port: $RttTelnetPort"
+    Write-Host "Target start mode: running (-nohalt)"
     Write-Host "Press Ctrl+C to stop the server"
 
     $process = Start-Process -FilePath $gdbServerExe -ArgumentList $arguments -PassThru -NoNewWindow

@@ -135,10 +135,5 @@ void drvGpioToggle(eDrvGpioPinMap pin)
     gDrvGpioBspInterface.toggle(pin);
 }
 
-bool drvGpioConsoleRegister(void)
-{
-    return drvGpioDebugConsoleRegister();
-}
-
 
 /**************************End of file********************************/

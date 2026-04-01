@@ -7,9 +7,18 @@
         Device = 'GD32F407VG'
         Interface = 'SWD'
         SpeedKHz = 10000
-        GdbPort = 2331
-        SwoPort = 2332
-        TelnetPort = 2333
+        GdbPort = 3331
+        SwoPort = 3332
+        TelnetPort = 3333
         RttTelnetPort = 19021
+    }
+
+    Serial = @{
+        BaudRate = 115200
+        DataBits = 8
+        Parity = 'None'
+        StopBits = 'One'
+        DtrEnable = $false
+        RtsEnable = $false
     }
 }

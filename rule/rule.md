@@ -1,4 +1,4 @@
-# 编码规则
+# 规则
 
 ## 0. 环境：Visual Studio Code + Windows 11
 
