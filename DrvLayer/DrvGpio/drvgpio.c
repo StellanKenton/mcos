@@ -12,9 +12,6 @@
 #if (DRVGPIO_LOG_SUPPORT == 1)
 #include "../../Console/log.h"
 #endif
-#if (DRVGPIO_CONSOLE_SUPPORT == 1)
-#include "console.h"
-#endif
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -63,14 +60,6 @@ void drvGpioInit(void)
 
     // bsp init function
     gDrvGpioBspInterface.init();
-
-    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
-    int lPinIndex;
-
-    for (lPinIndex = 0; lPinIndex < (int)DRVGPIO_MAX; ++lPinIndex) {
-        gDrvGpioBspInterface.pinStates[lPinIndex] = gDrvGpioBspInterface.read((eDrvGpioPinMap)lPinIndex);
-    }
-    #endif
 }
 
 /**
@@ -98,10 +87,6 @@ void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state)
 
     // bsp write function
     gDrvGpioBspInterface.write(pin, state);
-
-    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
-    gDrvGpioBspInterface.pinStates[pin] = state;
-    #endif
 }
 
 /**
@@ -123,10 +108,6 @@ eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin)
 
     // bsp read function
     lState = gDrvGpioBspInterface.read(pin);
-
-    #if (DRVGPIO_CONSOLE_SUPPORT == 1)
-    gDrvGpioBspInterface.pinStates[pin] = lState;
-    #endif
     return lState;
 }
 
@@ -151,11 +132,11 @@ void drvGpioToggle(eDrvGpioPinMap pin)
 
     // bsp toggle function 
     gDrvGpioBspInterface.toggle(pin);
-    
-    #if (DRVGPIO_CONSOLE_SUPPORT == 1)  
-    gDrvGpioBspInterface.pinStates[pin] =
-        (gDrvGpioBspInterface.pinStates[pin] == DRVGPIO_PIN_SET) ? DRVGPIO_PIN_RESET : DRVGPIO_PIN_SET;  
-    #endif
+}
+
+bool drvGpioConsoleRegister(void)
+{
+    return drvGpioPortConsoleRegister();
 }
 
 

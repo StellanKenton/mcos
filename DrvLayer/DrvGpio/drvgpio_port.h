@@ -11,12 +11,14 @@
 #ifndef DRVGPIO_PORT_H
 #define DRVGPIO_PORT_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define DRVGPIO_LOG_SUPPORT             1
-#define DRVGPIO_CONSOLE_SUPPORT         0
+#define DRVGPIO_CONSOLE_SUPPORT         1
 
 typedef enum eDrvGpioPinState {
     DRVGPIO_PIN_RESET = 0,
@@ -31,6 +33,8 @@ typedef enum eDrvGpioPinMap {
     DRVGPIO_KEY1,           // pe3
     DRVGPIO_MAX,
 } eDrvGpioPinMap;
+
+bool drvGpioPortConsoleRegister(void);
 
 #ifdef __cplusplus
 }

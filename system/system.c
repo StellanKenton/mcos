@@ -9,9 +9,11 @@
 **********************************************************************************/
 #include "system.h"
 
+#include "console.h"
 #include "log.h"
 
 static eSystemMode gSystemMode = eSYSTEM_INIT_MODE;
+static eConsoleCommandResult systemConsoleVerInfoHandler(uint32_t transport, int argc, char *argv[]);
 
 /**
 * @brief : Check whether the provided system mode is valid.
@@ -96,6 +98,37 @@ const char *systemGetFirmwareVersion(void)
 const char *systemGetHardwareVersion(void)
 {
     return HARDWARE_VERSION;
+}
+
+static eConsoleCommandResult systemConsoleVerInfoHandler(uint32_t transport, int argc, char *argv[])
+{
+    (void)argv;
+
+    if (argc != 1) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if (consoleReply(transport,
+        "Firmware: %s\nHardware: %s\nMode: %s\nOK",
+        systemGetFirmwareVersion(),
+        systemGetHardwareVersion(),
+        systemGetModeString(systemGetMode())) <= 0) {
+        return CONSOLE_COMMAND_RESULT_ERROR;
+    }
+
+    return CONSOLE_COMMAND_RESULT_OK;
+}
+
+bool systemConsoleRegister(void)
+{
+    static const stConsoleCommand gSystemConsoleCommand = {
+        .commandName = "verinfo",
+        .helpText = "verinfo",
+        .ownerTag = "system",
+        .handler = systemConsoleVerInfoHandler,
+    };
+
+    return consoleRegisterCommand(&gSystemConsoleCommand);
 }
 
 

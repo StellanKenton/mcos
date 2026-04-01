@@ -353,6 +353,14 @@ stRingBuffer* drvUartGetRingBuffer(eDrvUartPortMap uart)
         return NULL;
     }
 
+    if (!drvUartIsInitialized(uart)) {
+        return NULL;
+    }
+
+    if (drvUartSyncRxData(uart) != DRVUART_STATUS_OK) {
+        return NULL;
+    }
+
     return drvUartPortGetRingBuffer(uart);
 }
 

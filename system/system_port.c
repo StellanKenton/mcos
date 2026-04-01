@@ -8,6 +8,8 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "system_port.h"
+#include "console.h"
+#include "drvlayer/DrvGpio/drvgpio.h"
 #include "log.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -33,6 +35,7 @@ static void guardTaskCallback(void *parameter);
 static void powerTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
 static void createTasks(void);
+static bool initializeConsole(void);
 
 static void process(void)
 {
@@ -119,16 +122,19 @@ static BaseType_t createTask(TaskFunction_t taskFunction,
 
 static void createTasks(void)
 {
+    if (initializeConsole()) {
+        (void)createTask(consoleTaskCallback,
+            "ConsoleTask",
+            CONSOLE_TASK_STACK_SIZE,
+            CONSOLE_TASK_PRIORITY,
+            &gConsoleTaskHandle);
+    }
+
     (void)createTask(sensorTaskCallback,
         "SensorTask",
         SENSOR_TASK_STACK_SIZE,
         SENSOR_TASK_PRIORITY,
         &gSensorTaskHandle);
-    (void)createTask(consoleTaskCallback,
-        "ConsoleTask",
-        CONSOLE_TASK_STACK_SIZE,
-        CONSOLE_TASK_PRIORITY,
-        &gConsoleTaskHandle);
     (void)createTask(guardTaskCallback,
         "GuardTask",
         GUARD_TASK_STACK_SIZE,
@@ -146,6 +152,34 @@ static void createTasks(void)
         &gMemoryTaskHandle);
 }
 
+static bool initializeConsole(void)
+{
+    static bool gConsoleReady = false;
+
+    if (gConsoleReady) {
+        return true;
+    }
+
+    if (!consoleInit()) {
+        LOG_E(SYSTEM_TAG, "Console init failed");
+        return false;
+    }
+
+    if (!systemConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register system console command failed");
+        return false;
+    }
+
+    if (!drvGpioConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register GPIO console command failed");
+        return false;
+    }
+
+    gConsoleReady = true;
+    LOG_I(SYSTEM_TAG, "Console initialized");
+    return true;
+}
+
 static void sensorTaskCallback(void *parameter)
 {
     (void)parameter;
@@ -159,7 +193,8 @@ static void consoleTaskCallback(void *parameter)
 {
     (void)parameter;
 
-    for (;;) {
+    for (;;) {      
+        consoleProcess();
         vTaskDelay(pdMS_TO_TICKS(CONSOLE_TASK_PERIOD_MS));
     }
 }

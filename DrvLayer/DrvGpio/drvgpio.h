@@ -10,6 +10,7 @@
 #ifndef DRVGPIO_H
 #define DRVGPIO_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "drvgpio_port.h"
 
@@ -24,7 +25,6 @@ typedef eDrvGpioPinState (*drvGpioBspReadFunc)(eDrvGpioPinMap pin);
 typedef void (*drvGpioBspToggleFunc)(eDrvGpioPinMap pin);
 
 typedef struct stDrvGpioBspInterface {
-    eDrvGpioPinState pinStates[DRVGPIO_MAX];
     drvGpioBspInitFunc init;
     drvGpioBspWriteFunc write;
     drvGpioBspReadFunc read;
@@ -35,6 +35,7 @@ void drvGpioInit(void);
 void drvGpioWrite(eDrvGpioPinMap pin, eDrvGpioPinState state);
 eDrvGpioPinState drvGpioRead(eDrvGpioPinMap pin);
 void drvGpioToggle(eDrvGpioPinMap pin);
+bool drvGpioConsoleRegister(void);
 
 #ifdef __cplusplus
 }
