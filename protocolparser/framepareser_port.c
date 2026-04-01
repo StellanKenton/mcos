@@ -1,12 +1,12 @@
 /***********************************************************************************
-* @file     : framepareser_por.c
+* @file     : framepareser_port.c
 * @brief    : Project port helpers for the stream packet parser.
 * @details  : Provides the default millisecond tick source used by timeout logic.
 * @author   : GitHub Copilot
 * @date     : 2026-04-01
 * @version  : V1.0.0
 **********************************************************************************/
-#include "framepareser_por.h"
+#include "framepareser_port.h"
 
 #include "rep_config.h"
 
@@ -15,14 +15,14 @@
 #include "task.h"
 #endif
 
-typedef struct stFrmPsrPorSlot {
+typedef struct stFrmPsrPortSlot {
     stFrmPsrFmt fmt;
     bool isUsed;
-} stFrmPsrPorSlot;
+} stFrmPsrPortSlot;
 
-static stFrmPsrPorSlot gFrmPsrPorSlots[FRM_PSR_POR_MAX_FMTS];
+static stFrmPsrPortSlot gFrmPsrPortSlots[FRM_PSR_PORT_MAX_FMTS];
 
-uint32_t frmPsrPorGetTickMs(void)
+uint32_t frmPsrPortGetTickMs(void)
 {
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
     return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
@@ -31,7 +31,7 @@ uint32_t frmPsrPorGetTickMs(void)
 #endif
 }
 
-void frmPsrPorApplyDftCfg(stFrmPsrCfg *cfg)
+void frmPsrPortApplyDftCfg(stFrmPsrCfg *cfg)
 {
     if (cfg == NULL) {
         return;
@@ -42,65 +42,65 @@ void frmPsrPorApplyDftCfg(stFrmPsrCfg *cfg)
     }
 
     if (cfg->waitPktToutMs == 0U) {
-        cfg->waitPktToutMs = FRM_PSR_POR_WAIT_PKT_TOUT_MS;
+        cfg->waitPktToutMs = FRM_PSR_PORT_WAIT_PKT_TOUT_MS;
     }
 
     if (cfg->getTick == NULL) {
-        cfg->getTick = frmPsrPorGetTickMs;
+        cfg->getTick = frmPsrPortGetTickMs;
     }
 }
 
-void frmPsrPorApplyDftRunCfg(stFrmPsrRunCfg *runCfg)
+void frmPsrPortApplyDftRunCfg(stFrmPsrRunCfg *runCfg)
 {
     if (runCfg == NULL) {
         return;
     }
 
     if (runCfg->waitPktToutMs == 0U) {
-        runCfg->waitPktToutMs = FRM_PSR_POR_WAIT_PKT_TOUT_MS;
+        runCfg->waitPktToutMs = FRM_PSR_PORT_WAIT_PKT_TOUT_MS;
     }
 
     if (runCfg->getTick == NULL) {
-        runCfg->getTick = frmPsrPorGetTickMs;
+        runCfg->getTick = frmPsrPortGetTickMs;
     }
 }
 
-uint32_t frmPsrPorGetFmtCnt(void)
+uint32_t frmPsrPortGetFmtCnt(void)
 {
-    return FRM_PSR_POR_MAX_FMTS;
+    return FRM_PSR_PORT_MAX_FMTS;
 }
 
-bool frmPsrPorSetFmt(uint32_t idx, const stFrmPsrFmt *fmt)
+bool frmPsrPortSetFmt(uint32_t idx, const stFrmPsrFmt *fmt)
 {
-    if ((idx >= FRM_PSR_POR_MAX_FMTS) || (!frmPsrIsFmtValid(fmt))) {
+    if ((idx >= FRM_PSR_PORT_MAX_FMTS) || (!frmPsrIsFmtValid(fmt))) {
         return false;
     }
 
-    gFrmPsrPorSlots[idx].fmt = *fmt;
-    gFrmPsrPorSlots[idx].isUsed = true;
+    gFrmPsrPortSlots[idx].fmt = *fmt;
+    gFrmPsrPortSlots[idx].isUsed = true;
     return true;
 }
 
-const stFrmPsrFmt *frmPsrPorGetFmt(uint32_t idx)
+const stFrmPsrFmt *frmPsrPortGetFmt(uint32_t idx)
 {
-    if ((idx >= FRM_PSR_POR_MAX_FMTS) || (!gFrmPsrPorSlots[idx].isUsed)) {
+    if ((idx >= FRM_PSR_PORT_MAX_FMTS) || (!gFrmPsrPortSlots[idx].isUsed)) {
         return NULL;
     }
 
-    return &gFrmPsrPorSlots[idx].fmt;
+    return &gFrmPsrPortSlots[idx].fmt;
 }
 
-eFrmPsrSta frmPsrPorInit(stFrmPsr *psr, stRingBuffer *ringBuf, stFrmPsrCfg *cfg)
+eFrmPsrSta frmPsrPortInit(stFrmPsr *psr, stRingBuffer *ringBuf, stFrmPsrCfg *cfg)
 {
     if (cfg == NULL) {
         return FRM_PSR_INVALID_ARG;
     }
 
-    frmPsrPorApplyDftCfg(cfg);
+    frmPsrPortApplyDftCfg(cfg);
     return frmPsrInit(psr, ringBuf, cfg);
 }
 
-eFrmPsrSta frmPsrPorInitFmt(stFrmPsr *psr, stRingBuffer *ringBuf, uint32_t idx, stFrmPsrRunCfg *runCfg)
+eFrmPsrSta frmPsrPortInitFmt(stFrmPsr *psr, stRingBuffer *ringBuf, uint32_t idx, stFrmPsrRunCfg *runCfg)
 {
     const stFrmPsrFmt *lFmt;
 
@@ -108,20 +108,20 @@ eFrmPsrSta frmPsrPorInitFmt(stFrmPsr *psr, stRingBuffer *ringBuf, uint32_t idx, 
         return FRM_PSR_INVALID_ARG;
     }
 
-    lFmt = frmPsrPorGetFmt(idx);
+    lFmt = frmPsrPortGetFmt(idx);
     if (lFmt == NULL) {
         return FRM_PSR_FMT_INVALID;
     }
 
-    frmPsrPorApplyDftRunCfg(runCfg);
+    frmPsrPortApplyDftRunCfg(runCfg);
     return frmPsrInitFmt(psr, ringBuf, lFmt, runCfg);
 }
 
-eFrmPsrSta frmPsrPorSelFmt(stFrmPsr *psr, uint32_t idx)
+eFrmPsrSta frmPsrPortSelFmt(stFrmPsr *psr, uint32_t idx)
 {
     const stFrmPsrFmt *lFmt;
 
-    lFmt = frmPsrPorGetFmt(idx);
+    lFmt = frmPsrPortGetFmt(idx);
     if (lFmt == NULL) {
         return FRM_PSR_FMT_INVALID;
     }
@@ -129,11 +129,11 @@ eFrmPsrSta frmPsrPorSelFmt(stFrmPsr *psr, uint32_t idx)
     return frmPsrSelFmt(psr, lFmt);
 }
 
-eFrmPsrSta frmPsrPorMkPkt(uint32_t idx, const uint8_t *payloadBuf, uint16_t payloadLen, uint8_t *pktBuf, uint16_t pktBufSize, uint16_t *pktLen)
+eFrmPsrSta frmPsrPortMkPkt(uint32_t idx, const uint8_t *payloadBuf, uint16_t payloadLen, uint8_t *pktBuf, uint16_t pktBufSize, uint16_t *pktLen)
 {
     const stFrmPsrFmt *lFmt;
 
-    lFmt = frmPsrPorGetFmt(idx);
+    lFmt = frmPsrPortGetFmt(idx);
     if (lFmt == NULL) {
         return FRM_PSR_FMT_INVALID;
     }
@@ -141,4 +141,3 @@ eFrmPsrSta frmPsrPorMkPkt(uint32_t idx, const uint8_t *payloadBuf, uint16_t payl
     return frmPsrMkPktByFmt(lFmt, payloadBuf, payloadLen, pktBuf, pktBufSize, pktLen);
 }
 /**************************End of file********************************/
-
