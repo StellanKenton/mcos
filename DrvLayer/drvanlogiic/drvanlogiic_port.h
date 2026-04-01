@@ -19,7 +19,7 @@ extern "C" {
 #define DRVANLOGIIC_CONSOLE_SUPPORT             0
 
 #define DRVANLOGIIC_LOCK_WAIT_MS                5U
-#define DRVANLOGIIC_DEFAULT_HALF_PERIOD_US      5U
+#define DRVANLOGIIC_DEFAULT_HALF_PERIOD_US      10U
 #define DRVANLOGIIC_DEFAULT_RECOVERY_CLOCKS     9U
 
 typedef enum eDrvAnlogIicPortMap {

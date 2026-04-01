@@ -27,6 +27,7 @@ static stMpu6050Context gMpu6050Context;
 static bool gMpu6050CycleCounterReady = false;
 
 static bool mpu6050IsValidConfig(const stMpu6050Config *config);
+static bool mpu6050IsCompatibleDeviceId(uint8_t deviceId);
 static eMpu6050Status mpu6050MapIicStatus(eDrvAnlogIicStatus status);
 static void mpu6050DelayMs(uint32_t delayMs);
 static void mpu6050EnableCycleCounter(void);
@@ -85,7 +86,7 @@ eMpu6050Status mpu6050Init(const stMpu6050Config *config)
         return lStatus;
     }
 
-    if (lWhoAmI != MPU6050_WHO_AM_I_EXPECTED) {
+    if (!mpu6050IsCompatibleDeviceId(lWhoAmI)) {
         return MPU6050_STATUS_DEVICE_ID_MISMATCH;
     }
 
@@ -305,6 +306,12 @@ static bool mpu6050IsValidConfig(const stMpu6050Config *config)
     }
 
     return true;
+}
+
+static bool mpu6050IsCompatibleDeviceId(uint8_t deviceId)
+{
+    return (deviceId == MPU6050_WHO_AM_I_EXPECTED) ||
+           (deviceId == MPU6050_WHO_AM_I_COMPATIBLE_6500);
 }
 
 static eMpu6050Status mpu6050MapIicStatus(eDrvAnlogIicStatus status)

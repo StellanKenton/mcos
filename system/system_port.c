@@ -19,6 +19,10 @@
 #include "sys_int.h"
 #include "drvgpio_debug.h"
 #include "drvuart_debug.h"
+#include "drvanlogiic.h"
+#include "mpu6050.h"
+
+#define SENSOR_TASK_TAG "SensorTask"
 
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
@@ -39,6 +43,8 @@ static void powerTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
 static bool initializeConsole(void);
+static eMpu6050Status initializeSensorMpu6050(void);
+static eDrvAnlogIicStatus readSensorWhoAmI(uint8_t address, uint8_t *deviceId);
 
 static void process(void)
 {
@@ -211,11 +217,130 @@ static bool initializeConsole(void)
 
 static void sensorTaskCallback(void *parameter)
 {
+#if (SENSOR_TASK_MPU6050_LOG_SUPPORT == 1)
+    TickType_t lLastWakeTime;
+    stMpu6050RawSample lSample;
+    eMpu6050Status lStatus;
+    bool lSensorReady = false;
+    uint32_t lDelayMs = SENSOR_TASK_PERIOD_MS;
+#endif
+
     (void)parameter;
 
+#if (SENSOR_TASK_MPU6050_LOG_SUPPORT == 1)
+    lLastWakeTime = xTaskGetTickCount();
+
+    for (;;) {
+        if (!lSensorReady) {
+            lStatus = initializeSensorMpu6050();
+            lSensorReady = (lStatus == MPU6050_STATUS_OK);
+            lDelayMs = lSensorReady ? SENSOR_TASK_PERIOD_MS : SENSOR_TASK_INIT_RETRY_PERIOD_MS;
+        } else {
+            lStatus = mpu6050ReadRawSample(&lSample);
+            if (lStatus == MPU6050_STATUS_OK) {
+                LOG_I(SENSOR_TASK_TAG,
+                      "ax=%d ay=%d az=%d gx=%d gy=%d gz=%d tempRaw=%d",
+                      (int)lSample.accelX,
+                      (int)lSample.accelY,
+                      (int)lSample.accelZ,
+                      (int)lSample.gyroX,
+                      (int)lSample.gyroY,
+                      (int)lSample.gyroZ,
+                      (int)lSample.temperature);
+                lDelayMs = SENSOR_TASK_PERIOD_MS;
+            } else {
+                LOG_E(SENSOR_TASK_TAG, "Read MPU6050 sample failed: %d", (int)lStatus);
+                lSensorReady = false;
+                lDelayMs = SENSOR_TASK_INIT_RETRY_PERIOD_MS;
+            }
+        }
+
+        vTaskDelayUntil(&lLastWakeTime, pdMS_TO_TICKS(lDelayMs));
+    }
+#else
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(SENSOR_TASK_PERIOD_MS));
     }
+#endif
+}
+
+static eMpu6050Status initializeSensorMpu6050(void)
+{
+    stMpu6050Config lMpu6050Config;
+    eDrvAnlogIicStatus lIicStatus;
+    uint8_t lWhoAmI = 0U;
+    uint8_t lAddressIndex;
+    const uint8_t lProbeAddressList[2] = {
+        MPU6050_IIC_ADDRESS_LOW,
+        MPU6050_IIC_ADDRESS_HIGH,
+    };
+    eMpu6050Status lStatus;
+
+    mpu6050GetDefaultConfig(&lMpu6050Config);
+
+    for (lAddressIndex = 0U; lAddressIndex < 2U; ++lAddressIndex) {
+        lMpu6050Config.address = lProbeAddressList[lAddressIndex];
+        lIicStatus = readSensorWhoAmI(lMpu6050Config.address, &lWhoAmI);
+        if (lIicStatus == DRVANLOGIIC_STATUS_NACK) {
+            continue;
+        }
+
+        if (lIicStatus != DRVANLOGIIC_STATUS_OK) {
+            LOG_E(SENSOR_TASK_TAG,
+                  "Probe addr=0x%02X failed: %d",
+                  (unsigned int)lMpu6050Config.address,
+                  (int)lIicStatus);
+            return MPU6050_STATUS_ERROR;
+        }
+
+        LOG_I(SENSOR_TASK_TAG,
+              "Probe addr=0x%02X who_am_i=0x%02X",
+              (unsigned int)lMpu6050Config.address,
+              (unsigned int)lWhoAmI);
+        if ((lWhoAmI != MPU6050_WHO_AM_I_EXPECTED) &&
+            (lWhoAmI != MPU6050_WHO_AM_I_COMPATIBLE_6500)) {
+            continue;
+        }
+
+        lStatus = mpu6050Init(&lMpu6050Config);
+        if (lStatus == MPU6050_STATUS_OK) {
+            LOG_I(SENSOR_TASK_TAG,
+                  "MPU6050 initialized at addr=0x%02X",
+                  (unsigned int)lMpu6050Config.address);
+            return MPU6050_STATUS_OK;
+        }
+
+        LOG_E(SENSOR_TASK_TAG,
+              "Init MPU6050 failed at addr=0x%02X: %d",
+              (unsigned int)lMpu6050Config.address,
+              (int)lStatus);
+        return lStatus;
+    }
+
+    LOG_E(SENSOR_TASK_TAG, "No compatible MPU6050 detected on bus");
+    return MPU6050_STATUS_DEVICE_ID_MISMATCH;
+}
+
+static eDrvAnlogIicStatus readSensorWhoAmI(uint8_t address, uint8_t *deviceId)
+{
+    uint8_t lRegisterAddress = MPU6050_REG_WHO_AM_I;
+    eDrvAnlogIicStatus lStatus;
+
+    if (deviceId == NULL) {
+        return DRVANLOGIIC_STATUS_INVALID_PARAM;
+    }
+
+    lStatus = drvAnlogIicInit(DRVANLOGIIC_BUS0);
+    if (lStatus != DRVANLOGIIC_STATUS_OK) {
+        return lStatus;
+    }
+
+    return drvAnlogIicReadRegister(DRVANLOGIIC_BUS0,
+                                   address,
+                                   &lRegisterAddress,
+                                   1U,
+                                   deviceId,
+                                   1U);
 }
 
 static void consoleTaskCallback(void *parameter)

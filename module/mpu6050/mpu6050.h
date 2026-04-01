@@ -22,6 +22,7 @@ extern "C" {
 #define MPU6050_IIC_ADDRESS_LOW          0x68U
 #define MPU6050_IIC_ADDRESS_HIGH         0x69U
 #define MPU6050_WHO_AM_I_EXPECTED        0x68U
+#define MPU6050_WHO_AM_I_COMPATIBLE_6500 0x70U
 
 #define MPU6050_REG_SMPLRT_DIV           0x19U
 #define MPU6050_REG_CONFIG               0x1AU
@@ -39,11 +40,6 @@ extern "C" {
 #define MPU6050_RESET_DELAY_MS           100U
 #define MPU6050_WAKE_DELAY_MS            10U
 #define MPU6050_SAMPLE_BYTES             14U
-
-typedef struct stMpu6050Context {
-    stMpu6050Config config;
-    bool isInitialized;
-} stMpu6050Context;
 
 typedef enum eMpu6050Status {
     MPU6050_STATUS_OK = 0,
@@ -80,6 +76,11 @@ typedef struct stMpu6050Config {
     eMpu6050AccelRange accelRange;
     eMpu6050GyroRange gyroRange;
 } stMpu6050Config;
+
+typedef struct stMpu6050Context {
+    stMpu6050Config config;
+    bool isInitialized;
+} stMpu6050Context;
 
 typedef struct stMpu6050RawSample {
     int16_t accelX;
