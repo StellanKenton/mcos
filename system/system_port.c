@@ -18,6 +18,7 @@
 #include "system_debug.h"
 #include "sys_int.h"
 #include "drvgpio_debug.h"
+#include "drvuart_debug.h"
 
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
@@ -195,6 +196,11 @@ static bool initializeConsole(void)
 
     if (!drvGpioDebugConsoleRegister()) {
         LOG_E(SYSTEM_TAG, "Register GPIO console command failed");
+        return false;
+    }
+
+    if (!drvUartDebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register UART console command failed");
         return false;
     }
 

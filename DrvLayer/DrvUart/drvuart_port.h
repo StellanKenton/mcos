@@ -15,8 +15,22 @@
 extern "C" {
 #endif
 
-#define DRVGPIO_LOG_SUPPORT             1
-#define DRVGPIO_CONSOLE_SUPPORT         0
+#ifndef DRVUART_LOG_SUPPORT
+#define DRVUART_LOG_SUPPORT             1
+#endif
+
+#ifndef DRVUART_CONSOLE_SUPPORT
+#define DRVUART_CONSOLE_SUPPORT         1
+#endif
+
+/* Keep legacy macro names as compatibility aliases for existing code. */
+#ifndef DRVGPIO_LOG_SUPPORT
+#define DRVGPIO_LOG_SUPPORT             DRVUART_LOG_SUPPORT
+#endif
+
+#ifndef DRVGPIO_CONSOLE_SUPPORT
+#define DRVGPIO_CONSOLE_SUPPORT         DRVUART_CONSOLE_SUPPORT
+#endif
 
 #define DRVUART_RECVLEN_DEBUGUART    1024U
 

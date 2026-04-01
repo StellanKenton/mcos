@@ -66,8 +66,8 @@ static const stConsoleCommand gSystemStatusConsoleCommand = {
 
 #if (SYSTEM_DEBUG_CONSOLE_SUPPORT == 1)
 static const stConsoleCommand gSystemTaskUsageConsoleCommand = {
-    .commandName = "taskcpu",
-    .helpText = "taskcpu - sample task cpu usage every 50 ms for 1 s",
+    .commandName = "top",
+    .helpText = "top - sample task cpu usage every 50 ms for 1 s",
     .ownerTag = "system",
     .handler = systemDebugConsoleTaskUsageHandler,
 };

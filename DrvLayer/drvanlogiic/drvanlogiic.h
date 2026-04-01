@@ -1,0 +1,88 @@
+/************************************************************************************
+* @file     : drvanlogiic.h
+* @brief    : Reusable software IIC driver abstraction.
+* @details  : This module exposes a stable bit-banged IIC interface for upper
+*             modules while hiding board-specific GPIO operations behind hooks.
+* @author   : GitHub Copilot
+* @date     : 2026-04-01
+* @version  : V1.0.0
+* @copyright: Copyright (c) 2050
+***********************************************************************************/
+#ifndef DRVANLOGIIC_H
+#define DRVANLOGIIC_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "drvanlogiic_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum eDrvAnlogIicStatus {
+    DRVANLOGIIC_STATUS_OK = 0,
+    DRVANLOGIIC_STATUS_INVALID_PARAM,
+    DRVANLOGIIC_STATUS_NOT_READY,
+    DRVANLOGIIC_STATUS_BUSY,
+    DRVANLOGIIC_STATUS_TIMEOUT,
+    DRVANLOGIIC_STATUS_NACK,
+    DRVANLOGIIC_STATUS_UNSUPPORTED,
+    DRVANLOGIIC_STATUS_ERROR,
+} eDrvAnlogIicStatus;
+
+typedef void (*drvAnlogIicBspInitFunc)(eDrvAnlogIicPortMap iic);
+typedef void (*drvAnlogIicBspDriveLineFunc)(eDrvAnlogIicPortMap iic, bool releaseHigh);
+typedef bool (*drvAnlogIicBspReadLineFunc)(eDrvAnlogIicPortMap iic);
+typedef void (*drvAnlogIicBspDelayUsFunc)(uint16_t delayUs);
+
+typedef struct stDrvAnlogIicBspInterface {
+    drvAnlogIicBspInitFunc init;
+    drvAnlogIicBspDriveLineFunc setScl;
+    drvAnlogIicBspDriveLineFunc setSda;
+    drvAnlogIicBspReadLineFunc readScl;
+    drvAnlogIicBspReadLineFunc readSda;
+    drvAnlogIicBspDelayUsFunc delayUs;
+    uint16_t halfPeriodUs;
+    uint16_t clockStretchTimeoutUs;
+    uint8_t recoveryClockCount;
+} stDrvAnlogIicBspInterface;
+
+typedef struct stDrvAnlogIicTransfer {
+    uint8_t address;
+    const uint8_t *writeBuffer;
+    uint16_t writeLength;
+    uint8_t *readBuffer;
+    uint16_t readLength;
+} stDrvAnlogIicTransfer;
+
+eDrvAnlogIicStatus drvAnlogIicInit(eDrvAnlogIicPortMap iic);
+eDrvAnlogIicStatus drvAnlogIicRecoverBus(eDrvAnlogIicPortMap iic);
+eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer);
+eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
+                                    uint8_t address,
+                                    const uint8_t *buffer,
+                                    uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
+                                   uint8_t address,
+                                   uint8_t *buffer,
+                                   uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
+                                            uint8_t address,
+                                            const uint8_t *registerBuffer,
+                                            uint16_t registerLength,
+                                            const uint8_t *buffer,
+                                            uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
+                                           uint8_t address,
+                                           const uint8_t *registerBuffer,
+                                           uint16_t registerLength,
+                                           uint8_t *buffer,
+                                           uint16_t length);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // DRVANLOGIIC_H
+/**************************End of file********************************/

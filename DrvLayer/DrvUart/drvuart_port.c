@@ -55,7 +55,7 @@ eDrvUartStatus drvUartPortGetStorageConfig(eDrvUartPortMap uart, uint8_t **stora
     }
 }
 
-#if DRVGPIO_LOG_SUPPORT == 1
+#if (DRVUART_LOG_SUPPORT == 1)
 void drvUartLogInit(void)
 {
     (void)drvUartInit(DRVUART_DEBUG);
