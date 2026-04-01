@@ -18,14 +18,26 @@ and bus recovery. Board-specific GPIO operations stay inside BSP files and are e
 ## Public API
 
 - `drvAnlogIicInit()`: Configure one logical bus and run a recovery sequence.
-- `drvAnlogIicRecoverBus()`: Manually release a stuck bus by toggling SCL and sending STOP.
+- `drvAnlogIicRecoverBus()`: Manually release a stuck b
+us by toggling SCL and sending STOP.
 - `drvAnlogIicTransfer()`: Generic combined write and read transaction with repeated start support.
+- `drvAnlogIicTransferTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 - `drvAnlogIicWrite()`: Write raw payload to a 7-bit slave address.
+- `drvAnlogIicWriteTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 - `drvAnlogIicRead()`: Read raw payload from a 7-bit slave address.
+- `drvAnlogIicReadTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 - `drvAnlogIicWriteRegister()`: Write register selector bytes first, then data.
+- `drvAnlogIicWriteRegisterTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 - `drvAnlogIicReadRegister()`: Write register selector bytes, then read data with repeated start.
+- `drvAnlogIicReadRegisterTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 
 All addresses use 7-bit slave addressing. The driver adds the R and W bit internally.
+
+Transfer contract:
+
+- `writeBuffer` and `secondWriteBuffer` are sent in order before any read phase begins.
+- `readBuffer` is filled only after the write phase is finished.
+- Timeout wrapper APIs intentionally ignore the timeout value because the software driver remains synchronous and delay-driven.
 
 ## Port Binding Requirements
 

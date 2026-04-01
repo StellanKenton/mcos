@@ -53,31 +53,60 @@ typedef struct stDrvAnlogIicTransfer {
     uint16_t writeLength;
     uint8_t *readBuffer;
     uint16_t readLength;
+    const uint8_t *secondWriteBuffer;
+    uint16_t secondWriteLength;
 } stDrvAnlogIicTransfer;
 
 eDrvAnlogIicStatus drvAnlogIicInit(eDrvAnlogIicPortMap iic);
 eDrvAnlogIicStatus drvAnlogIicRecoverBus(eDrvAnlogIicPortMap iic);
 eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer);
+eDrvAnlogIicStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic,
+                                              const stDrvAnlogIicTransfer *transfer,
+                                              uint32_t timeoutMs);
 eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
                                     uint8_t address,
                                     const uint8_t *buffer,
                                     uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic,
+                                           uint8_t address,
+                                           const uint8_t *buffer,
+                                           uint16_t length,
+                                           uint32_t timeoutMs);
 eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
                                    uint8_t address,
                                    uint8_t *buffer,
                                    uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic,
+                                          uint8_t address,
+                                          uint8_t *buffer,
+                                          uint16_t length,
+                                          uint32_t timeoutMs);
 eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
                                             uint8_t address,
                                             const uint8_t *registerBuffer,
                                             uint16_t registerLength,
                                             const uint8_t *buffer,
                                             uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic,
+                                                   uint8_t address,
+                                                   const uint8_t *registerBuffer,
+                                                   uint16_t registerLength,
+                                                   const uint8_t *buffer,
+                                                   uint16_t length,
+                                                   uint32_t timeoutMs);
 eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
                                            uint8_t address,
                                            const uint8_t *registerBuffer,
                                            uint16_t registerLength,
                                            uint8_t *buffer,
                                            uint16_t length);
+eDrvAnlogIicStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic,
+                                                  uint8_t address,
+                                                  const uint8_t *registerBuffer,
+                                                  uint16_t registerLength,
+                                                  uint8_t *buffer,
+                                                  uint16_t length,
+                                                  uint32_t timeoutMs);
 
 #ifdef __cplusplus
 }

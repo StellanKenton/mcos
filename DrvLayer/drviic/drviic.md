@@ -18,11 +18,16 @@ through the BSP hook table.
 
 - `drvIicInit()`: Initialize one logical bus through the bound BSP hook.
 - `drvIicRecoverBus()`: Request an optional bus recovery sequence from the BSP layer.
-- `drvIicTransfer()`: Execute one combined transfer with up to two write segments and one read phase.
+- `drvIicTransfer()`: Execute one combined transfer using the default bus timeout.
+- `drvIicTransferTimeout()`: Execute one combined transfer with an explicit timeout.
 - `drvIicWrite()`: Write one contiguous payload to a 7-bit slave address.
+- `drvIicWriteTimeout()`: Write one contiguous payload with an explicit timeout.
 - `drvIicRead()`: Read one contiguous payload from a 7-bit slave address.
+- `drvIicReadTimeout()`: Read one contiguous payload with an explicit timeout.
 - `drvIicWriteRegister()`: Send register selector bytes first, then send payload bytes in the same write transaction.
+- `drvIicWriteRegisterTimeout()`: Register write helper with an explicit timeout.
 - `drvIicReadRegister()`: Send register selector bytes, then read payload bytes with a repeated-start capable transfer.
+- `drvIicReadRegisterTimeout()`: Register read helper with an explicit timeout.
 
 All addresses use 7-bit slave addressing. The BSP layer is responsible for applying the controller-specific
 read or write direction bit.
@@ -42,9 +47,9 @@ Optional hooks:
 
 Transfer contract:
 
-- `firstWriteBuffer` and `secondWriteBuffer` are sent in order before any read phase begins.
+- `writeBuffer` and `secondWriteBuffer` are sent in order before any read phase begins.
 - `readBuffer` is filled only after the write phase is finished.
-- A register read should usually map to `firstWriteBuffer = register selector` and `readBuffer = destination`.
+- A register read should usually map to `writeBuffer = register selector` and `readBuffer = destination`.
 - The BSP layer should use a repeated start between write and read phases when the target device requires it.
 
 ## Stability Features

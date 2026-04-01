@@ -543,8 +543,11 @@ eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlog
 
     if (!drvAnlogIicIsValidAddress(transfer->address) ||
         !drvAnlogIicIsValidWriteBuffer(transfer->writeBuffer, transfer->writeLength) ||
+        !drvAnlogIicIsValidWriteBuffer(transfer->secondWriteBuffer, transfer->secondWriteLength) ||
         !drvAnlogIicIsValidReadBuffer(transfer->readBuffer, transfer->readLength) ||
-        ((transfer->writeLength == 0U) && (transfer->readLength == 0U))) {
+        ((transfer->writeLength == 0U) &&
+         (transfer->secondWriteLength == 0U) &&
+         (transfer->readLength == 0U))) {
         return DRVANLOGIIC_STATUS_INVALID_PARAM;
     }
 
@@ -578,8 +581,23 @@ eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlog
                                                    transfer->writeLength);
         }
 
+        if ((lStatus == DRVANLOGIIC_STATUS_OK) && (transfer->secondWriteLength > 0U)) {
+            if (transfer->writeLength == 0U) {
+                lStatus = drvAnlogIicWriteBufferLocked(iic,
+                                                       lBspInterface,
+                                                       transfer->address,
+                                                       transfer->secondWriteBuffer,
+                                                       transfer->secondWriteLength);
+            } else {
+                lStatus = drvAnlogIicWriteRawLocked(iic,
+                                                    lBspInterface,
+                                                    transfer->secondWriteBuffer,
+                                                    transfer->secondWriteLength);
+            }
+        }
+
         if ((lStatus == DRVANLOGIIC_STATUS_OK) && (transfer->readLength > 0U)) {
-            if (transfer->writeLength > 0U) {
+            if ((transfer->writeLength > 0U) || (transfer->secondWriteLength > 0U)) {
                 lStatus = drvAnlogIicSendStart(iic, lBspInterface);
             }
 
@@ -603,6 +621,14 @@ eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlog
     return lStopStatus;
 }
 
+eDrvAnlogIicStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic,
+                                              const stDrvAnlogIicTransfer *transfer,
+                                              uint32_t timeoutMs)
+{
+    (void)timeoutMs;
+    return drvAnlogIicTransfer(iic, transfer);
+}
+
 eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
                                     uint8_t address,
                                     const uint8_t *buffer,
@@ -614,9 +640,21 @@ eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic,
         .writeLength = length,
         .readBuffer = NULL,
         .readLength = 0U,
+        .secondWriteBuffer = NULL,
+        .secondWriteLength = 0U,
     };
 
     return drvAnlogIicTransfer(iic, &lTransfer);
+}
+
+eDrvAnlogIicStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic,
+                                           uint8_t address,
+                                           const uint8_t *buffer,
+                                           uint16_t length,
+                                           uint32_t timeoutMs)
+{
+    (void)timeoutMs;
+    return drvAnlogIicWrite(iic, address, buffer, length);
 }
 
 eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
@@ -630,9 +668,21 @@ eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic,
         .writeLength = 0U,
         .readBuffer = buffer,
         .readLength = length,
+        .secondWriteBuffer = NULL,
+        .secondWriteLength = 0U,
     };
 
     return drvAnlogIicTransfer(iic, &lTransfer);
+}
+
+eDrvAnlogIicStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic,
+                                          uint8_t address,
+                                          uint8_t *buffer,
+                                          uint16_t length,
+                                          uint32_t timeoutMs)
+{
+    (void)timeoutMs;
+    return drvAnlogIicRead(iic, address, buffer, length);
 }
 
 eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
@@ -642,9 +692,7 @@ eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
                                             const uint8_t *buffer,
                                             uint16_t length)
 {
-    stDrvAnlogIicBspInterface *lBspInterface;
-    eDrvAnlogIicStatus lStatus;
-    eDrvAnlogIicStatus lStopStatus;
+    stDrvAnlogIicTransfer lTransfer;
 
     if (!drvAnlogIicIsValid(iic)) {
         return DRVANLOGIIC_STATUS_INVALID_PARAM;
@@ -659,45 +707,26 @@ eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic,
         return DRVANLOGIIC_STATUS_INVALID_PARAM;
     }
 
-    if (!gDrvAnlogIicInitialized[iic]) {
-        return DRVANLOGIIC_STATUS_NOT_READY;
-    }
+    lTransfer.address = address;
+    lTransfer.writeBuffer = registerBuffer;
+    lTransfer.writeLength = registerLength;
+    lTransfer.readBuffer = NULL;
+    lTransfer.readLength = 0U;
+    lTransfer.secondWriteBuffer = buffer;
+    lTransfer.secondWriteLength = length;
+    return drvAnlogIicTransfer(iic, &lTransfer);
+}
 
-    if (!drvAnlogIicLockBus(iic)) {
-        return DRVANLOGIIC_STATUS_BUSY;
-    }
-
-    lBspInterface = drvAnlogIicGetBspInterface(iic);
-    if (lBspInterface == NULL) {
-        drvAnlogIicUnlockBus(iic);
-        return DRVANLOGIIC_STATUS_NOT_READY;
-    }
-
-    lStatus = drvAnlogIicRecoverBusLocked(iic, lBspInterface);
-    if (lStatus == DRVANLOGIIC_STATUS_OK) {
-        lStatus = drvAnlogIicSendStart(iic, lBspInterface);
-    }
-
-    if (lStatus == DRVANLOGIIC_STATUS_OK) {
-        lStatus = drvAnlogIicWriteByte(iic, lBspInterface, (uint8_t)(address << 1U));
-    }
-
-    if ((lStatus == DRVANLOGIIC_STATUS_OK) && (registerLength > 0U)) {
-        lStatus = drvAnlogIicWriteRawLocked(iic, lBspInterface, registerBuffer, registerLength);
-    }
-
-    if ((lStatus == DRVANLOGIIC_STATUS_OK) && (length > 0U)) {
-        lStatus = drvAnlogIicWriteRawLocked(iic, lBspInterface, buffer, length);
-    }
-
-    lStopStatus = drvAnlogIicSendStop(iic, lBspInterface);
-    drvAnlogIicUnlockBus(iic);
-
-    if (lStatus != DRVANLOGIIC_STATUS_OK) {
-        return lStatus;
-    }
-
-    return lStopStatus;
+eDrvAnlogIicStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic,
+                                                   uint8_t address,
+                                                   const uint8_t *registerBuffer,
+                                                   uint16_t registerLength,
+                                                   const uint8_t *buffer,
+                                                   uint16_t length,
+                                                   uint32_t timeoutMs)
+{
+    (void)timeoutMs;
+    return drvAnlogIicWriteRegister(iic, address, registerBuffer, registerLength, buffer, length);
 }
 
 eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
@@ -720,7 +749,21 @@ eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic,
     lTransfer.writeLength = registerLength;
     lTransfer.readBuffer = buffer;
     lTransfer.readLength = length;
+    lTransfer.secondWriteBuffer = NULL;
+    lTransfer.secondWriteLength = 0U;
     return drvAnlogIicTransfer(iic, &lTransfer);
+}
+
+eDrvAnlogIicStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic,
+                                                  uint8_t address,
+                                                  const uint8_t *registerBuffer,
+                                                  uint16_t registerLength,
+                                                  uint8_t *buffer,
+                                                  uint16_t length,
+                                                  uint32_t timeoutMs)
+{
+    (void)timeoutMs;
+    return drvAnlogIicReadRegister(iic, address, registerBuffer, registerLength, buffer, length);
 }
 
 /**************************End of file********************************/

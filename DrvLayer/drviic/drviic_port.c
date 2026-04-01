@@ -13,11 +13,13 @@
 
 #include <stddef.h>
 
+#include "bsphardiic.h"
+
 stDrvIicBspInterface gDrvIicBspInterface[DRVIIC_MAX] = {
     [DRVIIC_BUS0] = {
-        .init = NULL,
-        .transfer = NULL,
-        .recoverBus = NULL,
+        .init = bspHardIicInit,
+        .transfer = bspHardIicTransfer,
+        .recoverBus = bspHardIicRecoverBus,
         .defaultTimeoutMs = DRVIIC_DEFAULT_TIMEOUT_MS,
     },
 };

@@ -1,8 +1,9 @@
 /************************************************************************************
 * @file     : mpu6050.h
-* @brief    : MPU6050 sensor driver built on the software IIC drv layer.
+* @brief    : MPU6050 sensor driver built on the shared IIC drv layer.
 * @details  : This module exposes a small blocking interface for basic device
-*             initialization and raw sensor data acquisition.
+*             initialization and raw sensor data acquisition through either
+*             the software or hardware IIC drv implementation.
 * @author   : GitHub Copilot
 * @date     : 2026-04-01
 * @version  : V1.0.0
@@ -13,7 +14,42 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define MPU6050_IIC_INTERFACE_SOFTWARE    1
+#define MPU6050_IIC_INTERFACE_HARDWARE    2
+
+#ifndef MPU6050_IIC_INTERFACE
+#define MPU6050_IIC_INTERFACE             MPU6050_IIC_INTERFACE_HARDWARE
+#endif
+
+#if (MPU6050_IIC_INTERFACE == MPU6050_IIC_INTERFACE_HARDWARE)
+#include "drviic.h"
+typedef eDrvIicPortMap eMpu6050IicPort;
+#define MPU6050_IIC_BUS0                  DRVIIC_BUS0
+#define MPU6050_IIC_MAX                   DRVIIC_MAX
+typedef eDrvIicStatus eMpu6050DrvIicStatus;
+#define MPU6050_DRV_IIC_STATUS_OK         DRVIIC_STATUS_OK
+#define MPU6050_DRV_IIC_STATUS_INVALID_PARAM DRVIIC_STATUS_INVALID_PARAM
+#define MPU6050_DRV_IIC_STATUS_NOT_READY  DRVIIC_STATUS_NOT_READY
+#define MPU6050_DRV_IIC_STATUS_BUSY       DRVIIC_STATUS_BUSY
+#define MPU6050_DRV_IIC_STATUS_TIMEOUT    DRVIIC_STATUS_TIMEOUT
+#define MPU6050_DRV_IIC_STATUS_NACK       DRVIIC_STATUS_NACK
+#define MPU6050_DRV_IIC_STATUS_UNSUPPORTED DRVIIC_STATUS_UNSUPPORTED
+#define MPU6050_DRV_IIC_STATUS_ERROR      DRVIIC_STATUS_ERROR
+#else
 #include "drvanlogiic.h"
+typedef eDrvAnlogIicPortMap eMpu6050IicPort;
+#define MPU6050_IIC_BUS0                  DRVANLOGIIC_BUS0
+#define MPU6050_IIC_MAX                   DRVANLOGIIC_MAX
+typedef eDrvAnlogIicStatus eMpu6050DrvIicStatus;
+#define MPU6050_DRV_IIC_STATUS_OK         DRVANLOGIIC_STATUS_OK
+#define MPU6050_DRV_IIC_STATUS_INVALID_PARAM DRVANLOGIIC_STATUS_INVALID_PARAM
+#define MPU6050_DRV_IIC_STATUS_NOT_READY  DRVANLOGIIC_STATUS_NOT_READY
+#define MPU6050_DRV_IIC_STATUS_BUSY       DRVANLOGIIC_STATUS_BUSY
+#define MPU6050_DRV_IIC_STATUS_TIMEOUT    DRVANLOGIIC_STATUS_TIMEOUT
+#define MPU6050_DRV_IIC_STATUS_NACK       DRVANLOGIIC_STATUS_NACK
+#define MPU6050_DRV_IIC_STATUS_UNSUPPORTED DRVANLOGIIC_STATUS_UNSUPPORTED
+#define MPU6050_DRV_IIC_STATUS_ERROR      DRVANLOGIIC_STATUS_ERROR
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +105,7 @@ typedef enum eMpu6050GyroRange {
 } eMpu6050GyroRange;
 
 typedef struct stMpu6050Config {
-    eDrvAnlogIicPortMap iic;
+    eMpu6050IicPort iic;
     uint8_t address;
     uint8_t sampleRateDivider;
     uint8_t dlpfConfig;

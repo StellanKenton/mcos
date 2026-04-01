@@ -26,20 +26,30 @@
 static stMpu6050Context gMpu6050Context;
 static bool gMpu6050CycleCounterReady = false;
 
+#if (MPU6050_IIC_INTERFACE == MPU6050_IIC_INTERFACE_HARDWARE)
+#define mpu6050DrvIicInit                drvIicInit
+#define mpu6050DrvIicWriteRegister       drvIicWriteRegister
+#define mpu6050DrvIicReadRegister        drvIicReadRegister
+#else
+#define mpu6050DrvIicInit                drvAnlogIicInit
+#define mpu6050DrvIicWriteRegister       drvAnlogIicWriteRegister
+#define mpu6050DrvIicReadRegister        drvAnlogIicReadRegister
+#endif
+
 static bool mpu6050IsValidConfig(const stMpu6050Config *config);
 static bool mpu6050IsCompatibleDeviceId(uint8_t deviceId);
-static eMpu6050Status mpu6050MapIicStatus(eDrvAnlogIicStatus status);
+static eMpu6050Status mpu6050MapIicStatus(eMpu6050DrvIicStatus status);
 static void mpu6050DelayMs(uint32_t delayMs);
 static void mpu6050EnableCycleCounter(void);
-static eMpu6050Status mpu6050WriteRegisterInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050WriteRegisterInternal(eMpu6050IicPort iic,
                                                    uint8_t address,
                                                    uint8_t registerAddress,
                                                    uint8_t value);
-static eMpu6050Status mpu6050ReadRegisterInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050ReadRegisterInternal(eMpu6050IicPort iic,
                                                   uint8_t address,
                                                   uint8_t registerAddress,
                                                   uint8_t *value);
-static eMpu6050Status mpu6050ReadRegistersInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050ReadRegistersInternal(eMpu6050IicPort iic,
                                                    uint8_t address,
                                                    uint8_t registerAddress,
                                                    uint8_t *buffer,
@@ -52,7 +62,7 @@ void mpu6050GetDefaultConfig(stMpu6050Config *config)
         return;
     }
 
-    config->iic = DRVANLOGIIC_BUS0;
+    config->iic = MPU6050_IIC_BUS0;
     config->address = MPU6050_IIC_ADDRESS_LOW;
     config->sampleRateDivider = 0U;
     config->dlpfConfig = 3U;
@@ -70,7 +80,7 @@ eMpu6050Status mpu6050Init(const stMpu6050Config *config)
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    lStatus = mpu6050MapIicStatus(drvAnlogIicInit(config->iic));
+    lStatus = mpu6050MapIicStatus(mpu6050DrvIicInit(config->iic));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -284,7 +294,7 @@ static bool mpu6050IsValidConfig(const stMpu6050Config *config)
         return false;
     }
 
-    if (config->iic >= DRVANLOGIIC_MAX) {
+    if (config->iic >= MPU6050_IIC_MAX) {
         return false;
     }
 
@@ -314,23 +324,23 @@ static bool mpu6050IsCompatibleDeviceId(uint8_t deviceId)
            (deviceId == MPU6050_WHO_AM_I_COMPATIBLE_6500);
 }
 
-static eMpu6050Status mpu6050MapIicStatus(eDrvAnlogIicStatus status)
+static eMpu6050Status mpu6050MapIicStatus(eMpu6050DrvIicStatus status)
 {
     switch (status) {
-        case DRVANLOGIIC_STATUS_OK:
+        case MPU6050_DRV_IIC_STATUS_OK:
             return MPU6050_STATUS_OK;
-        case DRVANLOGIIC_STATUS_INVALID_PARAM:
+        case MPU6050_DRV_IIC_STATUS_INVALID_PARAM:
             return MPU6050_STATUS_INVALID_PARAM;
-        case DRVANLOGIIC_STATUS_NOT_READY:
+        case MPU6050_DRV_IIC_STATUS_NOT_READY:
             return MPU6050_STATUS_NOT_READY;
-        case DRVANLOGIIC_STATUS_BUSY:
+        case MPU6050_DRV_IIC_STATUS_BUSY:
             return MPU6050_STATUS_BUSY;
-        case DRVANLOGIIC_STATUS_TIMEOUT:
+        case MPU6050_DRV_IIC_STATUS_TIMEOUT:
             return MPU6050_STATUS_TIMEOUT;
-        case DRVANLOGIIC_STATUS_NACK:
+        case MPU6050_DRV_IIC_STATUS_NACK:
             return MPU6050_STATUS_NACK;
-        case DRVANLOGIIC_STATUS_UNSUPPORTED:
-        case DRVANLOGIIC_STATUS_ERROR:
+        case MPU6050_DRV_IIC_STATUS_UNSUPPORTED:
+        case MPU6050_DRV_IIC_STATUS_ERROR:
         default:
             return MPU6050_STATUS_ERROR;
     }
@@ -396,20 +406,20 @@ static void mpu6050DelayMs(uint32_t delayMs)
 #endif
 }
 
-static eMpu6050Status mpu6050WriteRegisterInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050WriteRegisterInternal(eMpu6050IicPort iic,
                                                    uint8_t address,
                                                    uint8_t registerAddress,
                                                    uint8_t value)
 {
-    return mpu6050MapIicStatus(drvAnlogIicWriteRegister(iic,
-                                                        address,
-                                                        &registerAddress,
-                                                        1U,
-                                                        &value,
-                                                        1U));
+    return mpu6050MapIicStatus(mpu6050DrvIicWriteRegister(iic,
+                                                          address,
+                                                          &registerAddress,
+                                                          1U,
+                                                          &value,
+                                                          1U));
 }
 
-static eMpu6050Status mpu6050ReadRegisterInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050ReadRegisterInternal(eMpu6050IicPort iic,
                                                   uint8_t address,
                                                   uint8_t registerAddress,
                                                   uint8_t *value)
@@ -418,15 +428,15 @@ static eMpu6050Status mpu6050ReadRegisterInternal(eDrvAnlogIicPortMap iic,
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStatus(drvAnlogIicReadRegister(iic,
-                                                       address,
-                                                       &registerAddress,
-                                                       1U,
-                                                       value,
-                                                       1U));
+    return mpu6050MapIicStatus(mpu6050DrvIicReadRegister(iic,
+                                                         address,
+                                                         &registerAddress,
+                                                         1U,
+                                                         value,
+                                                         1U));
 }
 
-static eMpu6050Status mpu6050ReadRegistersInternal(eDrvAnlogIicPortMap iic,
+static eMpu6050Status mpu6050ReadRegistersInternal(eMpu6050IicPort iic,
                                                    uint8_t address,
                                                    uint8_t registerAddress,
                                                    uint8_t *buffer,
@@ -436,12 +446,12 @@ static eMpu6050Status mpu6050ReadRegistersInternal(eDrvAnlogIicPortMap iic,
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStatus(drvAnlogIicReadRegister(iic,
-                                                       address,
-                                                       &registerAddress,
-                                                       1U,
-                                                       buffer,
-                                                       length));
+    return mpu6050MapIicStatus(mpu6050DrvIicReadRegister(iic,
+                                                         address,
+                                                         &registerAddress,
+                                                         1U,
+                                                         buffer,
+                                                         length));
 }
 
 static int16_t mpu6050ParseBigEndianInt16(const uint8_t *buffer)
