@@ -18,6 +18,12 @@
 extern "C" {
 #endif
 
+typedef enum eFrameParMap {
+    FRAME_PROTOCOL0 = 0,
+    FRAME_PROTOCOL1,
+    FRAME_PROTOCOL_MAX,
+} eFrameParMapType;
+
 typedef enum eFrmPsrSta {
     FRM_PSR_OK = 0,
     FRM_PSR_EMPTY,
@@ -37,6 +43,12 @@ typedef enum eFrmPsrCrcEnd {
     FRM_PSR_CRC_END_LITTLE = 0,
     FRM_PSR_CRC_END_BIG
 } eFrmPsrCrcEnd;
+
+typedef struct stFrmPsrHeadHit {
+    uint32_t discardLen;
+    uint32_t partHeadLen;
+    bool isFound;
+} stFrmPsrHeadHit;
 
 typedef uint32_t (*frmPsrHeadLenFunc)(const uint8_t *buf, uint32_t availLen, void *userCtx);
 typedef uint32_t (*frmPsrPktLenFunc)(const uint8_t *buf, uint32_t headLen, uint32_t availLen, void *userCtx);
@@ -118,6 +130,36 @@ typedef struct stFrmPsrCfg {
     frmPsrGetTickFunc getTick;
     void *userCtx;
 } stFrmPsrCfg;
+
+typedef struct stFrmPsrPortSlot {
+    stFrmPsrFmt fmt;
+    bool isUsed;
+} stFrmPsrPortSlot;
+
+typedef stRingBuffer *(*frmPsrPortGetRingBufFunc)(void *userCtx);
+
+typedef struct stFrmPsrPortProtoCfg {
+    const uint8_t *rxHeadPat;
+    uint16_t rxHeadPatLen;
+    const uint8_t *txHeadPat;
+    uint16_t txHeadPatLen;
+    uint16_t minHeadLen;
+    uint16_t minPktLen;
+    uint16_t maxPktLen;
+    uint16_t waitPktToutMs;
+    int32_t crcRangeStartOff;
+    int32_t crcRangeEndOff;
+    int32_t crcFieldOff;
+    uint8_t crcFieldLen;
+    eFrmPsrCrcEnd crcFieldEnd;
+    frmPsrHeadLenFunc headLenFunc;
+    frmPsrPktLenFunc pktLenFunc;
+    frmPsrCrcCalcFunc crcCalcFunc;
+    frmPsrGetTickFunc getTick;
+    frmPsrPortGetRingBufFunc getRingBuf;
+    void *ringBufUserCtx;
+    void *userCtx;
+} stFrmPsrPortProtoCfg;
 
 typedef struct stFrmPsr {
     stRingBuffer *ringBuf;

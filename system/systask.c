@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "console.h"
+#include "appcomm/appcomm.h"
 #include "drvlayer/DrvGpio/drvgpio.h"
 #include "log.h"
 #include "FreeRTOS.h"
@@ -35,15 +36,14 @@
 #define SENSOR_TASK_FLASH_IDLE_PERIOD_MS     1000U
 #define SENSOR_TASK_FLASH_BUFFER_SIZE        16U
 #define SENSOR_TASK_W25Q128_CAPACITY_ID      0x18U
-#define SENSOR_TASK_W25Q64_CAPACITY_ID       0x17U
 
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
 static TaskHandle_t gGuardTaskHandle = NULL;
 static TaskHandle_t gPowerTaskHandle = NULL;
+static TaskHandle_t gAppCommTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
 static const uint8_t gSensorTaskW25q128Name[] = "W25Q128";
-static const uint8_t gSensorTaskW25q64Name[] = "W25Q64";
 static bool gDrvGpioReady = false;
 
 static void process(void);
@@ -52,10 +52,12 @@ static void sensorTaskCallback(void *parameter);
 static void consoleTaskCallback(void *parameter);
 static void guardTaskCallback(void *parameter);
 static void powerTaskCallback(void *parameter);
+static void appCommTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
 static bool initializeDrvGpio(void);
 static bool initializeConsole(void);
+static bool initializeAppComm(void);
 static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status);
 static bool sensorTaskPrepareFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi);
 static bool sensorTaskVerifyFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId);
@@ -186,6 +188,18 @@ static bool createTasks(void)
         lResult = false;
     }
 
+    if (initializeAppComm()) {
+        if (pdPASS != createTask(appCommTaskCallback,
+            "AppCommTask",
+            APPCOMM_TASK_STACK_SIZE,
+            APPCOMM_TASK_PRIORITY,
+            &gAppCommTaskHandle)) {
+            lResult = false;
+        }
+    } else {
+        lResult = false;
+    }
+
     if (pdPASS != createTask(memoryTaskCallback,
         "MemoryTask",
         MEMORY_TASK_STACK_SIZE,
@@ -264,6 +278,17 @@ static bool initializeConsole(void)
 
     gConsoleReady = true;
     LOG_I(SYSTEM_TAG, "Console initialized");
+    return true;
+}
+
+static bool initializeAppComm(void)
+{
+    if (!appCommInit()) {
+        LOG_E(SYSTEM_TAG, "AppComm init failed");
+        return false;
+    }
+
+    LOG_I(SYSTEM_TAG, "AppComm initialized on debug uart");
     return true;
 }
 
@@ -418,31 +443,24 @@ static bool sensorTaskVerifyFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap s
 static bool sensorTaskRunFlashDemo(void)
 {
     bool lW25q128Ok;
-    bool lW25q64Ok;
 
     LOG_I(SENSOR_TASK_TAG,
-          "Start dual flash demo: W25Q128 PB10/PB14/PB15 CS=PE15, W25Q64 PA5/PA6/PA7 CS=PA4");
+          "Start single flash demo: W25Q128 PB10/PB14/PB15 CS=PE15");
 
     lW25q128Ok = sensorTaskVerifyFlashDevice(W25QXXX_DEV0,
                                              DRVSPI_BUS0,
                                              gSensorTaskW25q128Name,
                                              sizeof(gSensorTaskW25q128Name) - 1U,
                                              SENSOR_TASK_W25Q128_CAPACITY_ID);
-    lW25q64Ok = sensorTaskVerifyFlashDevice(W25QXXX_DEV1,
-                                            DRVSPI_BUS1,
-                                            gSensorTaskW25q64Name,
-                                            sizeof(gSensorTaskW25q64Name) - 1U,
-                                            SENSOR_TASK_W25Q64_CAPACITY_ID);
 
-    if (lW25q128Ok && lW25q64Ok) {
-        LOG_I(SENSOR_TASK_TAG, "Dual flash demo completed");
+    if (lW25q128Ok) {
+        LOG_I(SENSOR_TASK_TAG, "Single flash demo completed");
         return true;
     }
 
     LOG_E(SENSOR_TASK_TAG,
-          "Dual flash demo failed: w25q128=%d w25q64=%d",
-          (int)lW25q128Ok,
-          (int)lW25q64Ok);
+          "Single flash demo failed: w25q128=%d",
+          (int)lW25q128Ok);
     return false;
 }
 
@@ -492,6 +510,16 @@ static void powerTaskCallback(void *parameter)
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(POWER_TASK_PERIOD_MS));
+    }
+}
+
+static void appCommTaskCallback(void *parameter)
+{
+    (void)parameter;
+
+    for (;;) {
+        appCommProcess();
+        vTaskDelay(pdMS_TO_TICKS(APPCOMM_TASK_PERIOD_MS));
     }
 }
 

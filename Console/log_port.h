@@ -28,11 +28,11 @@ extern "C" {
 #endif
 
 #ifndef LOG_PORT_UART_OUTPUT_ENABLE
-#define LOG_PORT_UART_OUTPUT_ENABLE      1
+#define LOG_PORT_UART_OUTPUT_ENABLE      0
 #endif
 
 #ifndef LOG_PORT_UART_INPUT_ENABLE
-#define LOG_PORT_UART_INPUT_ENABLE       1
+#define LOG_PORT_UART_INPUT_ENABLE       0
 #endif
 
 const stLogInterface *logPortGetInterfaces(void);

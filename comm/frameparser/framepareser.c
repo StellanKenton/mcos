@@ -10,11 +10,9 @@
 
 #include <string.h>
 
-typedef struct stFrmPsrHeadHit {
-    uint32_t discardLen;
-    uint32_t partHeadLen;
-    bool isFound;
-} stFrmPsrHeadHit;
+#include "Rep/console/log.h"
+
+#define FRM_PSR_LOG_TAG  "FrmPsr"
 
 static uint32_t frmPsrMinU32(uint32_t left, uint32_t right);
 static uint32_t frmPsrToPhyIdx(const stRingBuffer *ringBuf, uint32_t logIdx);
@@ -631,6 +629,10 @@ eFrmPsrSta frmPsrProc(stFrmPsr *psr, stFrmPsrPkt *pkt)
             }
 
             if (frmPsrIsPktTout(psr)) {
+                LOG_W(FRM_PSR_LOG_TAG,
+                      "Packet wait timeout before head complete, used=%u discard=%u",
+                      (unsigned int)lUsedLen,
+                      (unsigned int)psr->cfg.headPatLen);
                 (void)ringBufferDiscard(psr->ringBuf, psr->cfg.headPatLen);
                 frmPsrClrPend(psr);
                 lLastSta = FRM_PSR_NEED_MORE_DATA;
@@ -679,6 +681,11 @@ eFrmPsrSta frmPsrProc(stFrmPsr *psr, stFrmPsrPkt *pkt)
             }
 
             if (frmPsrIsPktTout(psr)) {
+                LOG_W(FRM_PSR_LOG_TAG,
+                      "Packet body timeout, used=%u pkt=%u discard=%u",
+                      (unsigned int)lUsedLen,
+                      (unsigned int)lPktLen,
+                      (unsigned int)lHeadLen);
                 (void)ringBufferDiscard(psr->ringBuf, lHeadLen);
                 frmPsrClrPend(psr);
                 lLastSta = FRM_PSR_NEED_MORE_DATA;

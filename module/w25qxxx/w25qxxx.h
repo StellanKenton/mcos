@@ -34,6 +34,23 @@ typedef enum eW25qxxxDevMap {
 #define W25QXXX_CHIP_ERASE_TIMEOUT_MS        120000U
 #define W25QXXX_BUSY_POLL_DELAY_MS           1U
 
+
+#define W25QXXX_CMD_WRITE_ENABLE             0x06U
+#define W25QXXX_CMD_READ_STATUS1             0x05U
+#define W25QXXX_CMD_JEDEC_ID                 0x9FU
+#define W25QXXX_CMD_READ_DATA                0x03U
+#define W25QXXX_CMD_READ_DATA_4B             0x13U
+#define W25QXXX_CMD_PAGE_PROGRAM             0x02U
+#define W25QXXX_CMD_PAGE_PROGRAM_4B          0x12U
+#define W25QXXX_CMD_SECTOR_ERASE             0x20U
+#define W25QXXX_CMD_SECTOR_ERASE_4B          0x21U
+#define W25QXXX_CMD_BLOCK_ERASE_64K          0xD8U
+#define W25QXXX_CMD_BLOCK_ERASE_64K_4B       0xDCU
+#define W25QXXX_CMD_CHIP_ERASE               0xC7U
+
+#define W25QXXX_STATUS1_BUSY_MASK            0x01U
+#define W25QXXX_STATUS1_WEL_MASK             0x02U
+
 typedef eDrvStatus eW25qxxxStatus;
 
 #define W25QXXX_STATUS_OK                 DRV_STATUS_OK
