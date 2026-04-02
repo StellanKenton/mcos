@@ -39,6 +39,7 @@ static TaskHandle_t gPowerTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
 static const uint8_t gSensorTaskW25q128Name[] = "W25Q128";
 static const uint8_t gSensorTaskW25q64Name[] = "W25Q64";
+static bool gDrvGpioReady = false;
 
 static void process(void);
 static BaseType_t createTask(TaskFunction_t taskFunction, const char *taskName, configSTACK_DEPTH_TYPE stackDepth, UBaseType_t taskPriority, TaskHandle_t *taskHandle);
@@ -48,6 +49,7 @@ static void guardTaskCallback(void *parameter);
 static void powerTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
+static bool initializeDrvGpio(void);
 static bool initializeConsole(void);
 static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status);
 static bool sensorTaskPrepareFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi);
@@ -139,6 +141,10 @@ static bool createTasks(void)
 {
     bool lResult = true;
 
+    if (!initializeDrvGpio()) {
+        return false;
+    }
+
     if (initializeConsole()) {
         if (pdPASS != createTask(consoleTaskCallback,
             "ConsoleTask",
@@ -184,6 +190,18 @@ static bool createTasks(void)
     }
 
     return lResult;
+}
+
+static bool initializeDrvGpio(void)
+{
+    if (gDrvGpioReady) {
+        return true;
+    }
+
+    drvGpioInit();
+    gDrvGpioReady = true;
+    LOG_I(SYSTEM_TAG, "DrvGpio initialized");
+    return true;
 }
 
 static bool initializeConsole(void)

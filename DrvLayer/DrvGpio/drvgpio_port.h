@@ -15,13 +15,9 @@
 extern "C" {
 #endif
 
-#ifndef DRVGPIO_LOG_SUPPORT
-#define DRVGPIO_LOG_SUPPORT             1
-#endif
 
-#ifndef DRVGPIO_CONSOLE_SUPPORT
+#define DRVGPIO_LOG_SUPPORT             1
 #define DRVGPIO_CONSOLE_SUPPORT         1
-#endif
 
 typedef enum eDrvGpioPinState {
     DRVGPIO_PIN_RESET = 0,
@@ -30,10 +26,10 @@ typedef enum eDrvGpioPinState {
 } eDrvGpioPinState;
 
 typedef enum eDrvGpioPinMap {
-    DRVGPIO_LEDR = 0,       // pe4
-    DRVGPIO_LEDG,           // pe5
-    DRVGPIO_LEDB,           // pe6
-    DRVGPIO_KEY1,           // pe3
+    DRVGPIO_LEDR = 0,           // OUT PC0
+    DRVGPIO_LEDG = 1,           // OUT PC1
+    DRVGPIO_LEDB = 2,           // OUT PC2
+    DRVGPIO_KEY = 3,            // IN PC13
     DRVGPIO_MAX,
 } eDrvGpioPinMap;
 

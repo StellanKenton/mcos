@@ -18,72 +18,16 @@
 
 #include "console.h"
 
-typedef struct stDrvGpioDebugPinDescriptor {
-    eDrvGpioPinMap pin;
-    const char *pinName;
-    const char *aliasCommandName;
-    const char *aliasHelpText;
-    bool isReadable;
-    bool isWritable;
-    bool isToggleSupported;
-} stDrvGpioDebugPinDescriptor;
-
-typedef struct stDrvGpioConsoleAliasCommand {
-    stConsoleCommand command;
-    const stDrvGpioDebugPinDescriptor *pinDescriptor;
-} stDrvGpioConsoleAliasCommand;
-
-#define DRVGPIO_DEBUG_PIN_COUNT  ((uint32_t)(sizeof(gDrvGpioDebugPins) / sizeof(gDrvGpioDebugPins[0])))
-
-static const stDrvGpioDebugPinDescriptor *drvGpioDebugFindPinByName(const char *pinName);
-static const stDrvGpioConsoleAliasCommand *drvGpioDebugFindAliasCommand(const char *commandName);
+static bool drvGpioDebugFindPinByName(const char *pinName, eDrvGpioPinMap *pin);
+static const char *drvGpioDebugGetPinName(eDrvGpioPinMap pin);
+static bool drvGpioDebugIsPinReadable(eDrvGpioPinMap pin);
+static bool drvGpioDebugIsPinWritable(eDrvGpioPinMap pin);
+static bool drvGpioDebugIsPinToggleSupported(eDrvGpioPinMap pin);
 static bool drvGpioDebugParseConsoleState(const char *argument, eDrvGpioPinState *state);
 static const char *drvGpioDebugGetStateText(eDrvGpioPinState state);
-static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, const stDrvGpioDebugPinDescriptor *pinDescriptor);
+static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, eDrvGpioPinMap pin);
 static eConsoleCommandResult drvGpioDebugReplyPinList(uint32_t transport);
-static eConsoleCommandResult drvGpioDebugConsoleAliasHandler(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
-
-static const stDrvGpioDebugPinDescriptor gDrvGpioDebugPins[] = {
-    {
-        .pin = DRVGPIO_LEDR,
-        .pinName = "ledr",
-        .aliasCommandName = "ledr",
-        .aliasHelpText = "ledr <0|1|on|off>",
-        .isReadable = true,
-        .isWritable = true,
-        .isToggleSupported = true,
-    },
-    {
-        .pin = DRVGPIO_LEDG,
-        .pinName = "ledg",
-        .aliasCommandName = "ledg",
-        .aliasHelpText = "ledg <0|1|on|off>",
-        .isReadable = true,
-        .isWritable = true,
-        .isToggleSupported = true,
-    },
-    {
-        .pin = DRVGPIO_LEDB,
-        .pinName = "ledb",
-        .aliasCommandName = "ledb",
-        .aliasHelpText = "ledb <0|1|on|off>",
-        .isReadable = true,
-        .isWritable = true,
-        .isToggleSupported = true,
-    },
-    {
-        .pin = DRVGPIO_KEY1,
-        .pinName = "key1",
-        .aliasCommandName = NULL,
-        .aliasHelpText = NULL,
-        .isReadable = true,
-        .isWritable = false,
-        .isToggleSupported = false,
-    },
-};
-
-static stDrvGpioConsoleAliasCommand gDrvGpioAliasCommands[DRVGPIO_DEBUG_PIN_COUNT];
 
 static const stConsoleCommand gDrvGpioConsoleCommand = {
     .commandName = "gpio",
@@ -95,46 +39,114 @@ static const stConsoleCommand gDrvGpioConsoleCommand = {
 /**
 * @brief : Find a GPIO pin descriptor by logical pin name.
 * @param : pinName Logical pin name.
-* @return: Matching descriptor entry, or NULL when not found.
+* @param : pin Parsed logical pin output.
+* @return: true when the pin name is valid.
 **/
-static const stDrvGpioDebugPinDescriptor *drvGpioDebugFindPinByName(const char *pinName)
+static bool drvGpioDebugFindPinByName(const char *pinName, eDrvGpioPinMap *pin)
 {
-    uint32_t lIndex;
-
-    if (pinName == NULL) {
-        return NULL;
+    if ((pinName == NULL) || (pin == NULL)) {
+        return false;
     }
 
-    for (lIndex = 0U; lIndex < DRVGPIO_DEBUG_PIN_COUNT; ++lIndex) {
-        if (strcmp(gDrvGpioDebugPins[lIndex].pinName, pinName) == 0) {
-            return &gDrvGpioDebugPins[lIndex];
-        }
+    if (strcmp(pinName, "ledr") == 0) {
+        *pin = DRVGPIO_LEDR;
+        return true;
     }
 
-    return NULL;
+    if (strcmp(pinName, "ledg") == 0) {
+        *pin = DRVGPIO_LEDG;
+        return true;
+    }
+
+    if (strcmp(pinName, "ledb") == 0) {
+        *pin = DRVGPIO_LEDB;
+        return true;
+    }
+
+    if (strcmp(pinName, "key") == 0) {
+        *pin = DRVGPIO_KEY;
+        return true;
+    }
+
+    if (strcmp(pinName, "key1") == 0) {
+        *pin = DRVGPIO_KEY;
+        return true;
+    }
+
+    return false;
 }
 
 /**
-* @brief : Find the GPIO alias command metadata by command name.
-* @param : commandName Console command name.
-* @return: Matching alias entry, or NULL when not found.
+* @brief : Convert a logical pin into its console name.
+* @param : pin Logical pin.
+* @return: Pin name text, or NULL when invalid.
 **/
-static const stDrvGpioConsoleAliasCommand *drvGpioDebugFindAliasCommand(const char *commandName)
+static const char *drvGpioDebugGetPinName(eDrvGpioPinMap pin)
 {
-    uint32_t lIndex;
-
-    if (commandName == NULL) {
-        return NULL;
+    switch (pin) {
+        case DRVGPIO_LEDR:
+            return "ledr";
+        case DRVGPIO_LEDG:
+            return "ledg";
+        case DRVGPIO_LEDB:
+            return "ledb";
+        case DRVGPIO_KEY:
+            return "key";
+        default:
+            return NULL;
     }
+}
 
-    for (lIndex = 0U; lIndex < DRVGPIO_DEBUG_PIN_COUNT; ++lIndex) {
-        if ((gDrvGpioAliasCommands[lIndex].command.commandName != NULL) &&
-            (strcmp(gDrvGpioAliasCommands[lIndex].command.commandName, commandName) == 0)) {
-            return &gDrvGpioAliasCommands[lIndex];
-        }
+/**
+* @brief : Check whether a logical pin supports read access.
+* @param : pin Logical pin.
+* @return: true when the pin is readable.
+**/
+static bool drvGpioDebugIsPinReadable(eDrvGpioPinMap pin)
+{
+    switch (pin) {
+        case DRVGPIO_LEDR:
+        case DRVGPIO_LEDG:
+        case DRVGPIO_LEDB:
+        case DRVGPIO_KEY:
+            return true;
+        default:
+            return false;
     }
+}
 
-    return NULL;
+/**
+* @brief : Check whether a logical pin supports write access.
+* @param : pin Logical pin.
+* @return: true when the pin is writable.
+**/
+static bool drvGpioDebugIsPinWritable(eDrvGpioPinMap pin)
+{
+    switch (pin) {
+        case DRVGPIO_LEDR:
+        case DRVGPIO_LEDG:
+        case DRVGPIO_LEDB:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/**
+* @brief : Check whether a logical pin supports toggle access.
+* @param : pin Logical pin.
+* @return: true when the pin supports toggle.
+**/
+static bool drvGpioDebugIsPinToggleSupported(eDrvGpioPinMap pin)
+{
+    switch (pin) {
+        case DRVGPIO_LEDR:
+        case DRVGPIO_LEDG:
+        case DRVGPIO_LEDB:
+            return true;
+        default:
+            return false;
+    }
 }
 
 /**
@@ -189,23 +201,29 @@ static const char *drvGpioDebugGetStateText(eDrvGpioPinState state)
 /**
 * @brief : Reply with the current state of a logical pin.
 * @param : transport Console reply transport.
-* @param : pinDescriptor Target pin descriptor.
+* @param : pin Target logical pin.
 * @return: Console command execution result.
 **/
-static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, const stDrvGpioDebugPinDescriptor *pinDescriptor)
+static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, eDrvGpioPinMap pin)
 {
     eDrvGpioPinState lState;
+    const char *lPinName;
 
-    if ((pinDescriptor == NULL) || !pinDescriptor->isReadable) {
+    if (!drvGpioDebugIsPinReadable(pin)) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
 
-    lState = drvGpioRead(pinDescriptor->pin);
+    lPinName = drvGpioDebugGetPinName(pin);
+    if (lPinName == NULL) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    lState = drvGpioRead(pin);
     if (lState == DRVGPIO_PIN_STATE_INVALID) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
 
-    if (consoleReply(transport, "%s=%s\nOK", pinDescriptor->pinName, drvGpioDebugGetStateText(lState)) <= 0) {
+    if (consoleReply(transport, "%s=%s\nOK", lPinName, drvGpioDebugGetStateText(lState)) <= 0) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
 
@@ -219,54 +237,27 @@ static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, const
 **/
 static eConsoleCommandResult drvGpioDebugReplyPinList(uint32_t transport)
 {
-    uint32_t lIndex;
     int32_t lReplyResult;
+    eDrvGpioPinMap lPins[] = {
+        DRVGPIO_LEDR,
+        DRVGPIO_LEDG,
+        DRVGPIO_LEDB,
+        DRVGPIO_KEY,
+    };
+    uint32_t lIndex;
 
-    for (lIndex = 0U; lIndex < DRVGPIO_DEBUG_PIN_COUNT; ++lIndex) {
+    for (lIndex = 0U; lIndex < ((uint32_t)(sizeof(lPins) / sizeof(lPins[0]))); ++lIndex) {
         lReplyResult = consoleReply(transport,
             "%s read=%s write=%s toggle=%s\n",
-            gDrvGpioDebugPins[lIndex].pinName,
-            gDrvGpioDebugPins[lIndex].isReadable ? "yes" : "no",
-            gDrvGpioDebugPins[lIndex].isWritable ? "yes" : "no",
-            gDrvGpioDebugPins[lIndex].isToggleSupported ? "yes" : "no");
+            drvGpioDebugGetPinName(lPins[lIndex]),
+            drvGpioDebugIsPinReadable(lPins[lIndex]) ? "yes" : "no",
+            drvGpioDebugIsPinWritable(lPins[lIndex]) ? "yes" : "no",
+            drvGpioDebugIsPinToggleSupported(lPins[lIndex]) ? "yes" : "no");
         if (lReplyResult <= 0) {
             return CONSOLE_COMMAND_RESULT_ERROR;
         }
     }
 
-    if (consoleReply(transport, "OK") <= 0) {
-        return CONSOLE_COMMAND_RESULT_ERROR;
-    }
-
-    return CONSOLE_COMMAND_RESULT_OK;
-}
-
-/**
-* @brief : Handle GPIO alias console commands such as ledr and ledg.
-* @param : transport Console reply transport.
-* @param : argc Argument count.
-* @param : argv Argument vector.
-* @return: Console command execution result.
-**/
-static eConsoleCommandResult drvGpioDebugConsoleAliasHandler(uint32_t transport, int argc, char *argv[])
-{
-    const stDrvGpioConsoleAliasCommand *lAliasCommand;
-    eDrvGpioPinState lTargetState;
-
-    if ((argc != 2) || (argv == NULL) || (argv[0] == NULL)) {
-        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
-    }
-
-    lAliasCommand = drvGpioDebugFindAliasCommand(argv[0]);
-    if ((lAliasCommand == NULL) || (lAliasCommand->pinDescriptor == NULL) || !lAliasCommand->pinDescriptor->isWritable) {
-        return CONSOLE_COMMAND_RESULT_ERROR;
-    }
-
-    if (!drvGpioDebugParseConsoleState(argv[1], &lTargetState)) {
-        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
-    }
-
-    drvGpioWrite(lAliasCommand->pinDescriptor->pin, lTargetState);
     if (consoleReply(transport, "OK") <= 0) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
@@ -283,7 +274,7 @@ static eConsoleCommandResult drvGpioDebugConsoleAliasHandler(uint32_t transport,
 **/
 static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int argc, char *argv[])
 {
-    const stDrvGpioDebugPinDescriptor *lPinDescriptor;
+    eDrvGpioPinMap lPin;
     eDrvGpioPinState lTargetState;
 
     if ((argc < 2) || (argv == NULL) || (argv[1] == NULL)) {
@@ -302,8 +293,7 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
 
-    lPinDescriptor = drvGpioDebugFindPinByName(argv[2]);
-    if (lPinDescriptor == NULL) {
+    if (!drvGpioDebugFindPinByName(argv[2], &lPin)) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
 
@@ -312,11 +302,11 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
             return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
         }
 
-        return drvGpioDebugReplyPinState(transport, lPinDescriptor);
+        return drvGpioDebugReplyPinState(transport, lPin);
     }
 
     if ((strcmp(argv[1], "set") == 0) || (strcmp(argv[1], "write") == 0)) {
-        if ((argc != 4) || !lPinDescriptor->isWritable) {
+        if ((argc != 4) || !drvGpioDebugIsPinWritable(lPin)) {
             return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
         }
 
@@ -324,7 +314,7 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
             return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
         }
 
-        drvGpioWrite(lPinDescriptor->pin, lTargetState);
+        drvGpioWrite(lPin, lTargetState);
         if (consoleReply(transport, "OK") <= 0) {
             return CONSOLE_COMMAND_RESULT_ERROR;
         }
@@ -333,11 +323,11 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
     }
 
     if (strcmp(argv[1], "toggle") == 0) {
-        if ((argc != 3) || !lPinDescriptor->isToggleSupported) {
+        if ((argc != 3) || !drvGpioDebugIsPinToggleSupported(lPin)) {
             return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
         }
 
-        drvGpioToggle(lPinDescriptor->pin);
+        drvGpioToggle(lPin);
         if (consoleReply(transport, "OK") <= 0) {
             return CONSOLE_COMMAND_RESULT_ERROR;
         }
@@ -352,29 +342,7 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
 bool drvGpioDebugConsoleRegister(void)
 {
 #if (DRVGPIO_CONSOLE_SUPPORT == 1)
-    uint32_t lIndex;
-
-    if (!consoleRegisterCommand(&gDrvGpioConsoleCommand)) {
-        return false;
-    }
-
-    for (lIndex = 0U; lIndex < DRVGPIO_DEBUG_PIN_COUNT; ++lIndex) {
-        if (gDrvGpioDebugPins[lIndex].aliasCommandName == NULL) {
-            continue;
-        }
-
-        gDrvGpioAliasCommands[lIndex].command.commandName = gDrvGpioDebugPins[lIndex].aliasCommandName;
-        gDrvGpioAliasCommands[lIndex].command.helpText = gDrvGpioDebugPins[lIndex].aliasHelpText;
-        gDrvGpioAliasCommands[lIndex].command.ownerTag = "drvGpio";
-        gDrvGpioAliasCommands[lIndex].command.handler = drvGpioDebugConsoleAliasHandler;
-        gDrvGpioAliasCommands[lIndex].pinDescriptor = &gDrvGpioDebugPins[lIndex];
-
-        if (!consoleRegisterCommand(&gDrvGpioAliasCommands[lIndex].command)) {
-            return false;
-        }
-    }
-
-    return true;
+    return consoleRegisterCommand(&gDrvGpioConsoleCommand);
 #else
     return false;
 #endif

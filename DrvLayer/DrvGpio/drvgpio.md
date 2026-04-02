@@ -44,7 +44,7 @@ stDrvGpioBspInterface gDrvGpioBspInterface;
 当前 `drvgpio_port.h` 已经承担两类配置:
 
 - 逻辑功能开关，如 `DRVGPIO_LOG_SUPPORT`、`DRVGPIO_CONSOLE_SUPPORT`
-- 逻辑资源枚举，如 `DRVGPIO_LEDR`、`DRVGPIO_KEY1`
+- 逻辑资源枚举，如 `DRVGPIO_LEDR`、`DRVGPIO_KEY`
 
 这里的枚举必须表示“项目逻辑引脚”，而不是“GPIOE pin4”这种物理资源名。以后如果换板卡，只需要 BSP 重映射，不应该改上层调用语义。
 
@@ -122,7 +122,7 @@ stDrvGpioBspInterface gDrvGpioBspInterface;
 - `DRVGPIO_LEDR`
 - `DRVGPIO_LEDG`
 - `DRVGPIO_LEDB`
-- `DRVGPIO_KEY1`
+- `DRVGPIO_KEY`
 
 如果以后要增加新的 LED、按键、复位脚或片选脚，先改 `drvgpio_port.h` 的逻辑枚举，再补 BSP 映射，不要先在 BSP 里私自扩展物理引脚。
 
