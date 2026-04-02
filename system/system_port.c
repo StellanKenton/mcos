@@ -8,6 +8,9 @@
 * @copyright: Copyright (c) 2050
 **********************************************************************************/
 #include "system_port.h"
+
+#include <string.h>
+
 #include "console.h"
 #include "drvlayer/DrvGpio/drvgpio.h"
 #include "log.h"
@@ -19,16 +22,24 @@
 #include "sys_int.h"
 #include "drvgpio_debug.h"
 #include "drvuart_debug.h"
-#include "mpu6050.h"
+#include "Rep/module/w25qxxx/w25qxxx.h"
 
 #define SENSOR_TASK_TAG "SensorTask"
+#define SENSOR_TASK_FLASH_TEST_ADDRESS       0U
+#define SENSOR_TASK_FLASH_IDLE_PERIOD_MS     1000U
+#define SENSOR_TASK_FLASH_BUFFER_SIZE        16U
+#define SENSOR_TASK_W25Q128_CAPACITY_ID      0x18U
+#define SENSOR_TASK_W25Q64_CAPACITY_ID       0x17U
 
 static TaskHandle_t gSensorTaskHandle = NULL;
 static TaskHandle_t gConsoleTaskHandle = NULL;
 static TaskHandle_t gGuardTaskHandle = NULL;
 static TaskHandle_t gPowerTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
-static stMpu6050Device gSensorMpu6050Device;
+static stW25qxxxDevice gSensorW25q128Device;
+static stW25qxxxDevice gSensorW25q64Device;
+static const uint8_t gSensorTaskW25q128Name[] = "W25Q128";
+static const uint8_t gSensorTaskW25q64Name[] = "W25Q64";
 
 static void process(void);
 static BaseType_t createTask(TaskFunction_t taskFunction, const char *taskName, configSTACK_DEPTH_TYPE stackDepth, UBaseType_t taskPriority, TaskHandle_t *taskHandle);
@@ -39,7 +50,10 @@ static void powerTaskCallback(void *parameter);
 static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
 static bool initializeConsole(void);
-static eMpu6050Status initializeSensorMpu6050(void);
+static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status);
+static void sensorTaskPrepareFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi);
+static bool sensorTaskVerifyFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId);
+static bool sensorTaskRunFlashDemo(void);
 
 static void process(void)
 {
@@ -206,127 +220,188 @@ static bool initializeConsole(void)
     return true;
 }
 
+static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status)
+{
+    switch (status) {
+        case W25QXXX_STATUS_OK:
+            return "ok";
+        case W25QXXX_STATUS_INVALID_PARAM:
+            return "invalid_param";
+        case W25QXXX_STATUS_NOT_READY:
+            return "not_ready";
+        case W25QXXX_STATUS_BUSY:
+            return "busy";
+        case W25QXXX_STATUS_TIMEOUT:
+            return "timeout";
+        case W25QXXX_STATUS_UNSUPPORTED:
+            return "unsupported";
+        case W25QXXX_STATUS_DEVICE_ID_MISMATCH:
+            return "device_id_mismatch";
+        case W25QXXX_STATUS_OUT_OF_RANGE:
+            return "out_of_range";
+        default:
+            return "error";
+    }
+}
+
+static void sensorTaskPrepareFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi)
+{
+    if (device == NULL) {
+        return;
+    }
+
+    w25qxxxGetDefaultConfig(device);
+    w25qxxxPortSetHardwareSpi(&device->binding, spi);
+}
+
+static bool sensorTaskVerifyFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId)
+{
+    uint8_t lReadBuffer[SENSOR_TASK_FLASH_BUFFER_SIZE];
+    const stW25qxxxInfo *lInfo;
+    eW25qxxxStatus lStatus;
+
+    if ((device == NULL) || (name == NULL) || (nameLength == 0U) || (nameLength >= SENSOR_TASK_FLASH_BUFFER_SIZE)) {
+        LOG_E(SENSOR_TASK_TAG, "Invalid flash test config on spi=%d", (int)spi);
+        return false;
+    }
+
+    sensorTaskPrepareFlashDevice(device, spi);
+
+    lStatus = w25qxxxInit(device);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s init failed on spi=%d: %s(%d)",
+              (const char *)name,
+              (int)spi,
+              sensorTaskGetW25qxxxStatusString(lStatus),
+              (int)lStatus);
+        return false;
+    }
+
+    lInfo = w25qxxxGetInfo(device);
+    if ((lInfo == NULL) || (lInfo->capacityId != expectedCapacityId)) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s capacity mismatch on spi=%d: expect=0x%02X actual=0x%02X",
+              (const char *)name,
+              (int)spi,
+              (unsigned int)expectedCapacityId,
+              (unsigned int)((lInfo != NULL) ? lInfo->capacityId : 0U));
+        return false;
+    }
+
+    LOG_I(SENSOR_TASK_TAG,
+          "%s jedec=%02X %02X %02X size=%luB addrWidth=%u spi=%d",
+          (const char *)name,
+          (unsigned int)lInfo->manufacturerId,
+          (unsigned int)lInfo->memoryType,
+          (unsigned int)lInfo->capacityId,
+          (unsigned long)lInfo->totalSizeBytes,
+          (unsigned int)lInfo->addressWidth,
+          (int)spi);
+
+    lStatus = w25qxxxEraseSector(device, SENSOR_TASK_FLASH_TEST_ADDRESS);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s erase failed on spi=%d: %s(%d)",
+              (const char *)name,
+              (int)spi,
+              sensorTaskGetW25qxxxStatusString(lStatus),
+              (int)lStatus);
+        return false;
+    }
+
+    lStatus = w25qxxxWrite(device, SENSOR_TASK_FLASH_TEST_ADDRESS, name, nameLength);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s write failed on spi=%d: %s(%d)",
+              (const char *)name,
+              (int)spi,
+              sensorTaskGetW25qxxxStatusString(lStatus),
+              (int)lStatus);
+        return false;
+    }
+
+    (void)memset(lReadBuffer, 0, sizeof(lReadBuffer));
+    lStatus = w25qxxxRead(device, SENSOR_TASK_FLASH_TEST_ADDRESS, lReadBuffer, nameLength);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s read failed on spi=%d: %s(%d)",
+              (const char *)name,
+              (int)spi,
+              sensorTaskGetW25qxxxStatusString(lStatus),
+              (int)lStatus);
+        return false;
+    }
+
+    lReadBuffer[nameLength] = '\0';
+    if (memcmp(lReadBuffer, name, nameLength) != 0) {
+        LOG_E(SENSOR_TASK_TAG,
+              "%s readback mismatch on spi=%d: expect=%s actual=%s",
+              (const char *)name,
+              (int)spi,
+              (const char *)name,
+              (const char *)lReadBuffer);
+        return false;
+    }
+
+    LOG_I(SENSOR_TASK_TAG,
+          "%s verify ok on spi=%d readback=%s",
+          (const char *)name,
+          (int)spi,
+          (const char *)lReadBuffer);
+    return true;
+}
+
+static bool sensorTaskRunFlashDemo(void)
+{
+    bool lW25q128Ok;
+    bool lW25q64Ok;
+
+    LOG_I(SENSOR_TASK_TAG,
+          "Start dual flash demo: W25Q128 PB10/PB14/PB15 CS=PE15, W25Q64 PA5/PA6/PA7 CS=PA4");
+
+    lW25q128Ok = sensorTaskVerifyFlashDevice(&gSensorW25q128Device,
+                                             DRVSPI_BUS0,
+                                             gSensorTaskW25q128Name,
+                                             sizeof(gSensorTaskW25q128Name) - 1U,
+                                             SENSOR_TASK_W25Q128_CAPACITY_ID);
+    lW25q64Ok = sensorTaskVerifyFlashDevice(&gSensorW25q64Device,
+                                            DRVSPI_BUS1,
+                                            gSensorTaskW25q64Name,
+                                            sizeof(gSensorTaskW25q64Name) - 1U,
+                                            SENSOR_TASK_W25Q64_CAPACITY_ID);
+
+    if (lW25q128Ok && lW25q64Ok) {
+        LOG_I(SENSOR_TASK_TAG, "Dual flash demo completed");
+        return true;
+    }
+
+    LOG_E(SENSOR_TASK_TAG,
+          "Dual flash demo failed: w25q128=%d w25q64=%d",
+          (int)lW25q128Ok,
+          (int)lW25q64Ok);
+    return false;
+}
+
 static void sensorTaskCallback(void *parameter)
 {
-#if (SENSOR_TASK_MPU6050_LOG_SUPPORT == 1)
     TickType_t lLastWakeTime;
-    stMpu6050RawSample lSample;
-    eMpu6050Status lStatus;
-    uint8_t lWhoAmI = 0U;
-    bool lSensorReady = false;
-    bool lWhoAmIReported = false;
-    uint32_t lSampleCount = 0U;
-    uint32_t lDelayMs = SENSOR_TASK_PERIOD_MS;
-#endif
+    bool lFlashReady = false;
+    uint32_t lDelayMs = SENSOR_TASK_INIT_RETRY_PERIOD_MS;
 
     (void)parameter;
-
-#if (SENSOR_TASK_MPU6050_LOG_SUPPORT == 1)
     lLastWakeTime = xTaskGetTickCount();
 
     for (;;) {
-        if (!lSensorReady) {
-            lStatus = initializeSensorMpu6050();
-            lSensorReady = (lStatus == MPU6050_STATUS_OK);
-            lWhoAmIReported = false;
-            lSampleCount = 0U;
-            lDelayMs = lSensorReady ? SENSOR_TASK_PERIOD_MS : SENSOR_TASK_INIT_RETRY_PERIOD_MS;
+        if (!lFlashReady) {
+            lFlashReady = sensorTaskRunFlashDemo();
+            lDelayMs = lFlashReady ? SENSOR_TASK_FLASH_IDLE_PERIOD_MS : SENSOR_TASK_INIT_RETRY_PERIOD_MS;
         } else {
-            lStatus = mpu6050ReadRaw(&gSensorMpu6050Device, &lSample);
-            if (lStatus == MPU6050_STATUS_OK) {
-                ++lSampleCount;
-                if ((!lWhoAmIReported) && (lSampleCount >= 10U)) {
-                    lStatus = mpu6050ReadReg(&gSensorMpu6050Device,
-                                             MPU6050_REG_WHO_AM_I,
-                                             &lWhoAmI);
-                    if (lStatus == MPU6050_STATUS_OK) {
-                        LOG_I(SENSOR_TASK_TAG, "WHO_AM_I recheck=0x%02X", (unsigned int)lWhoAmI);
-                        lWhoAmIReported = true;
-                    } else {
-                        LOG_E(SENSOR_TASK_TAG, "Recheck WHO_AM_I failed: %d", (int)lStatus);
-                    }
-                }
-                LOG_I(SENSOR_TASK_TAG,
-                      "ax=%d ay=%d az=%d gx=%d gy=%d gz=%d tempRaw=%d",
-                      (int)lSample.accelX,
-                      (int)lSample.accelY,
-                      (int)lSample.accelZ,
-                      (int)lSample.gyroX,
-                      (int)lSample.gyroY,
-                      (int)lSample.gyroZ,
-                      (int)lSample.temperature);
-                lDelayMs = SENSOR_TASK_PERIOD_MS;
-            } else {
-                LOG_E(SENSOR_TASK_TAG, "Read MPU6050 sample failed: %d", (int)lStatus);
-                lSensorReady = false;
-                lDelayMs = SENSOR_TASK_INIT_RETRY_PERIOD_MS;
-            }
+            lDelayMs = SENSOR_TASK_FLASH_IDLE_PERIOD_MS;
         }
 
         vTaskDelayUntil(&lLastWakeTime, pdMS_TO_TICKS(lDelayMs));
     }
-#else
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(SENSOR_TASK_PERIOD_MS));
-    }
-#endif
-}
-
-static eMpu6050Status initializeSensorMpu6050(void)
-{
-    stMpu6050Device lMpu6050Device;
-    uint8_t lWhoAmI = 0U;
-    uint8_t lAddressIndex;
-    const uint8_t lProbeAddressList[2] = {
-        MPU6050_IIC_ADDRESS_LOW,
-        MPU6050_IIC_ADDRESS_HIGH,
-    };
-    eMpu6050Status lStatus;
-
-    mpu6050GetDefCfg(&lMpu6050Device);
-
-    for (lAddressIndex = 0U; lAddressIndex < 2U; ++lAddressIndex) {
-        lMpu6050Device.address = lProbeAddressList[lAddressIndex];
-        lStatus = mpu6050ReadId(&lMpu6050Device, &lWhoAmI);
-        if (lStatus == MPU6050_STATUS_NACK) {
-            continue;
-        }
-
-        if (lStatus != MPU6050_STATUS_OK) {
-            LOG_E(SENSOR_TASK_TAG,
-                  "Probe addr=0x%02X failed: %d",
-                  (unsigned int)lMpu6050Device.address,
-                  (int)lStatus);
-            return lStatus;
-        }
-
-        LOG_I(SENSOR_TASK_TAG,
-              "Probe addr=0x%02X who_am_i=0x%02X",
-              (unsigned int)lMpu6050Device.address,
-              (unsigned int)lWhoAmI);
-        if ((lWhoAmI != MPU6050_WHO_AM_I_EXPECTED) &&
-            (lWhoAmI != MPU6050_WHO_AM_I_COMPATIBLE_6500)) {
-            continue;
-        }
-
-        lStatus = mpu6050Init(&lMpu6050Device);
-        if (lStatus == MPU6050_STATUS_OK) {
-            gSensorMpu6050Device = lMpu6050Device;
-            LOG_I(SENSOR_TASK_TAG,
-                  "MPU6050 initialized at addr=0x%02X",
-                  (unsigned int)lMpu6050Device.address);
-            return MPU6050_STATUS_OK;
-        }
-
-        LOG_E(SENSOR_TASK_TAG,
-              "Init MPU6050 failed at addr=0x%02X: %d",
-              (unsigned int)lMpu6050Device.address,
-              (int)lStatus);
-        return lStatus;
-    }
-
-    LOG_E(SENSOR_TASK_TAG, "No compatible MPU6050 detected on bus");
-    return MPU6050_STATUS_DEVICE_ID_MISMATCH;
 }
 
 static void consoleTaskCallback(void *parameter)

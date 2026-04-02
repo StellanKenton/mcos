@@ -25,6 +25,7 @@ extern "C" {
 
 typedef enum eDrvSpiPortMap {
     DRVSPI_BUS0 = 0,
+    DRVSPI_BUS1,
     DRVSPI_MAX,
 } eDrvSpiPortMap;
 
