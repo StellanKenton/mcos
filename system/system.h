@@ -22,16 +22,16 @@ extern "C" {
 #define SYSTEM_STRINGIFY_IMPL(value)    #value
 #define SYSTEM_STRINGIFY(value)         SYSTEM_STRINGIFY_IMPL(value)
 
-#define FW_VER_MAJOR            0
-#define FW_VER_MINOR            0
-#define FW_VER_PATCH            1
+#define FW_VER_MAJOR                    0
+#define FW_VER_MINOR                    0
+#define FW_VER_PATCH                    1
 
-#define HW_VER_MAJOR            0
-#define HW_VER_MINOR            0
-#define HW_VER_PATCH            1
+#define HW_VER_MAJOR                    0
+#define HW_VER_MINOR                    0
+#define HW_VER_PATCH                    1
 
-#define FIRMWARE_VERSION        "SoftVer" SYSTEM_STRINGIFY(FW_VER_MAJOR) "." SYSTEM_STRINGIFY(FW_VER_MINOR) "." SYSTEM_STRINGIFY(FW_VER_PATCH)
-#define HARDWARE_VERSION        "HardVer" SYSTEM_STRINGIFY(HW_VER_MAJOR) "." SYSTEM_STRINGIFY(HW_VER_MINOR) "." SYSTEM_STRINGIFY(HW_VER_PATCH)
+#define FIRMWARE_VERSION                "SoftVer" SYSTEM_STRINGIFY(FW_VER_MAJOR) "." SYSTEM_STRINGIFY(FW_VER_MINOR) "." SYSTEM_STRINGIFY(FW_VER_PATCH)
+#define HARDWARE_VERSION                "HardVer" SYSTEM_STRINGIFY(HW_VER_MAJOR) "." SYSTEM_STRINGIFY(HW_VER_MINOR) "." SYSTEM_STRINGIFY(HW_VER_PATCH)
 
 typedef enum eSystemMode {
     eSYSTEM_INIT_MODE = 0,

@@ -25,15 +25,7 @@ typedef enum eW25qxxxPortType {
     W25QXXX_PORT_DRVSPI,
 } eW25qxxxPortType;
 
-typedef enum eW25qxxxPortStatus {
-    W25QXXX_PORT_STATUS_OK = 0,
-    W25QXXX_PORT_STATUS_INVALID_PARAM,
-    W25QXXX_PORT_STATUS_NOT_READY,
-    W25QXXX_PORT_STATUS_BUSY,
-    W25QXXX_PORT_STATUS_TIMEOUT,
-    W25QXXX_PORT_STATUS_UNSUPPORTED,
-    W25QXXX_PORT_STATUS_ERROR,
-} eW25qxxxPortStatus;
+typedef eDrvStatus eW25qxxxPortStatus;
 
 typedef struct stW25qxxxPortBinding {
     eW25qxxxPortType type;

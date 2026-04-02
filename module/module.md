@@ -80,10 +80,10 @@ port 层不应负责：
 推荐命名模式如下：
 
 - 状态枚举：`e<Module>Status`
-- 配置或实例结构体：`st<Module>Device`、`st<Module>Config`、`st<Module>Sample`
+- 配置或实例结构体：`st<Module>Dev`、`st<Module>Cfg`、`st<Module>Sample`
 - port 绑定结构：`st<Module>PortXxxBinding`
 - port 接口表：`st<Module>PortXxxInterface`
-- 获取默认配置：`<module>GetDefaultConfig()`
+- 获取默认配置：`<module>GetDefaultCfg()`
 - 初始化：`<module>Init()`
 - 就绪检查：`<module>IsReady()`
 - 读接口：`<module>ReadXxx()`
@@ -92,27 +92,26 @@ port 层不应负责：
 - port 默认绑定：`<module>PortGetDefaultBinding()`
 - port 切换底层：`<module>PortSetHardwareXxx()`、`<module>PortSetSoftwareXxx()`
 
-如果模块没有“设备”语义，也可以将 `st<Module>Device` 替换为更合适的实例名，但仍建议保留一个实例结构体承载运行状态。
+如果模块没有“设备”语义，也可以将 `st<Module>Dev` 替换为更合适的实例名，但仍建议保留一个实例结构体承载运行状态。
 
 ## 5. 推荐数据结构
 
 ### 5.1 状态码
 
-每个模块建议定义自己的状态枚举，避免直接暴露底层 drv 状态码。推荐至少包含以下成员：
+每个模块的结果状态建议统一对齐 `eDrvStatus`，公共结果直接复用通用状态值，不再重复维护一套语义相同的枚举。推荐至少覆盖以下通用成员：
 
-- `OK`
-- `INVALID_PARAM`
-- `NOT_READY`
-- `BUSY`
-- `TIMEOUT`
-- `UNSUPPORTED`
-- `ERROR`
+- `DRV_STATUS_OK`
+- `DRV_STATUS_INVALID_PARAM`
+- `DRV_STATUS_NOT_READY`
+- `DRV_STATUS_BUSY`
+- `DRV_STATUS_TIMEOUT`
+- `DRV_STATUS_UNSUPPORTED`
+- `DRV_STATUS_ERROR`
 
-如果模块依赖外设 ID、自检、校验和等流程，可以增加以下成员：
+如果模块确实需要表达通用状态无法覆盖的结果，可以在 `DRV_STATUS_ERROR` 之后继续扩展模块私有状态值。例如：
 
-- `DEVICE_ID_MISMATCH`
-- `CRC_ERROR`
-- `OUT_OF_RANGE`
+- `CRC_ERROR` 可作为扩展值追加在通用状态之后
+- `OUT_OF_RANGE` 可作为扩展值追加在通用状态之后
 
 ### 5.2 实例结构体
 
@@ -126,25 +125,25 @@ port 层不应负责：
 可以参考如下字段组织方式：
 
 ```c
-typedef struct st<Module>Device {
+typedef struct st<Module>Dev {
     st<Module>PortBinding binding;
     uint8_t address;
     uint8_t option;
     bool isOnline;
     struct data;
-} st<Module>Device;
+} st<Module>Dev;
 ```
 
-如果配置项较多，也可以拆为 `st<Module>Config` 和 `st<Module>Device` 两层结构，但要保持接口清晰。
+有可配置的参数一定要拆为 `st<Module>Cfg` 和 `st<Module>Dev` 两层结构，但要保持接口清晰。
 
 ### 5.3 port 接口表
 
 当 module 需要适配多个 drv 实现时，推荐在 port 层定义函数指针表。例如：
 
 ```c
-typedef e<Module>DrvStatus (*<module>PortInitFunc)(uint8_t bus);
-typedef e<Module>DrvStatus (*<module>PortWriteFunc)(uint8_t bus, uint8_t address, const uint8_t *buffer, uint16_t length);
-typedef e<Module>DrvStatus (*<module>PortReadFunc)(uint8_t bus, uint8_t address, uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*<module>PortInitFunc)(uint8_t bus);
+typedef eDrvStatus (*<module>PortWriteFunc)(uint8_t bus, uint8_t address, const uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*<module>PortReadFunc)(uint8_t bus, uint8_t address, uint8_t *buffer, uint16_t length);
 
 typedef struct st<Module>PortInterface {
     <module>PortInitFunc init;
@@ -159,7 +158,7 @@ typedef struct st<Module>PortInterface {
 
 一个通用 module 建议优先提供以下接口：
 
-1. `<module>GetDefaultConfig()`
+1. `<module>GetDefaultCfg()`
 2. `<module>Init()`
 3. `<module>IsReady()`
 4. `<module>ReadXxx()`
@@ -168,14 +167,14 @@ typedef struct st<Module>PortInterface {
 
 说明如下：
 
-- `GetDefaultConfig`：初始化实例或配置结构，避免调用方遗漏字段。
+- `GetDefaultCfg`：初始化实例或配置结构，避免调用方遗漏字段。
 - `Init`：完成底层初始化、设备探测、自检、默认配置下发等步骤。
 - `IsReady`：仅用于快速判断实例当前是否可正常访问。
 - `ReadXxx`：读取模块数据、状态或寄存器。
 - `WriteXxx` 或 `SetXxx`：设置寄存器、模式或控制位。
 - `GetXxx`：获取运行状态、配置、派生值或转换结果。
 
-如果某个模块只需要极少接口，也应尽量保留 `GetDefaultConfig` 和 `Init` 这两个入口，保持使用方式一致。
+如果某个模块只需要极少接口，也应尽量保留 `GetDefaultCfg` 和 `Init` 这两个入口，保持使用方式一致。
 
 ## 7. 推荐初始化流程
 
@@ -308,7 +307,7 @@ typedef struct st<Module>PortInterface {
 
 ## Initialization Flow
 
-1. 调用 `<module>GetDefaultConfig()`。
+1. 调用 `<module>GetDefaultCfg()`。
 2. 按需修改默认配置。
 3. 按需切换到底层 drv 绑定。
 4. 调用 `<module>Init()`。
@@ -332,7 +331,7 @@ typedef struct st<Module>PortInterface {
 
 - 是否只有 module 核心层依赖 `<module>_port.h`，而不直接依赖 bsp。
 - 是否所有公共接口都带有模块名前缀。
-- 是否存在 `GetDefaultConfig` 和 `Init`。
+- 是否存在 `GetDefaultCfg` 和 `Init`。
 - 是否对参数和状态进行了充分校验。
 - 是否有明确的 ready 或 online 状态。
 - 是否对底层状态做了统一映射。

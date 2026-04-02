@@ -34,21 +34,19 @@ static bool w25qxxxIsReadyForAccess(const stW25qxxxDevice *device)
     return w25qxxxIsValidDevice(device) && device->isReady;
 }
 
-static eW25qxxxStatus w25qxxxMapPortStatus(eW25qxxxPortStatus status)
+static eW25qxxxStatus w25qxxxMapPortStatus(eDrvStatus status)
 {
     switch (status) {
-        case W25QXXX_PORT_STATUS_OK:
-            return W25QXXX_STATUS_OK;
-        case W25QXXX_PORT_STATUS_INVALID_PARAM:
-            return W25QXXX_STATUS_INVALID_PARAM;
-        case W25QXXX_PORT_STATUS_NOT_READY:
-            return W25QXXX_STATUS_NOT_READY;
-        case W25QXXX_PORT_STATUS_BUSY:
-            return W25QXXX_STATUS_BUSY;
-        case W25QXXX_PORT_STATUS_TIMEOUT:
-            return W25QXXX_STATUS_TIMEOUT;
-        case W25QXXX_PORT_STATUS_UNSUPPORTED:
-            return W25QXXX_STATUS_UNSUPPORTED;
+        case DRV_STATUS_OK:
+        case DRV_STATUS_INVALID_PARAM:
+        case DRV_STATUS_NOT_READY:
+        case DRV_STATUS_BUSY:
+        case DRV_STATUS_TIMEOUT:
+        case DRV_STATUS_NACK:
+        case DRV_STATUS_UNSUPPORTED:
+        case DRV_STATUS_ID_NOTMATCH:
+        case DRV_STATUS_ERROR:
+            return (eW25qxxxStatus)status;
         default:
             return W25QXXX_STATUS_ERROR;
     }

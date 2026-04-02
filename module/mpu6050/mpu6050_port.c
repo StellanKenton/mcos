@@ -9,6 +9,8 @@
 **********************************************************************************/
 #include "mpu6050_port.h"
 
+#include "mpu6050.h"
+
 #include <stdbool.h>
 
 #include "rep_config.h"
@@ -31,8 +33,7 @@ static eMpu6050DrvIicStatus mpu6050PortSoftIicReadRegAdpt(uint8_t bus, uint8_t a
 static eMpu6050DrvIicStatus mpu6050PortHardIicInitAdpt(uint8_t bus);
 static eMpu6050DrvIicStatus mpu6050PortHardIicWriteRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length);
 static eMpu6050DrvIicStatus mpu6050PortHardIicReadRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length);
-static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvStatus status);
-static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvStatus status);
+static const stMpu6050PortIicInterface *mpu6050PortGetBindIicIf(eMpu6050PortIicType type);
 
 static const stMpu6050PortIicInterface gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_MAX] = {
     [MPU6050_PORT_IIC_TYPE_SOFTWARE] = {
@@ -47,6 +48,34 @@ static const stMpu6050PortIicInterface gMpu6050PortIicInterfaces[MPU6050_PORT_II
     },
 };
 
+static const stMpu6050Cfg gMpu6050PortDefCfg[MPU6050_DEV_MAX] = {
+    [MPU6050_DEV0] = {
+        .iicBind = {
+            .type = MPU6050_PORT_IIC_TYPE_HARDWARE,
+            .bus = (uint8_t)DRVIIC_BUS0,
+            .iicIf = &gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_HARDWARE],
+        },
+        .address = MPU6050_WHO_AM_I_COMPATIBLE_6500,
+        .sampleRateDiv = 0U,
+        .dlpfCfg = 3U,
+        .accelRange = MPU6050_ACCEL_RANGE_4G,
+        .gyroRange = MPU6050_GYRO_RANGE_500DPS,
+    },
+    [MPU6050_DEV1] = {
+        .iicBind = {
+            .type = MPU6050_PORT_IIC_TYPE_HARDWARE,
+            .bus = (uint8_t)DRVIIC_BUS0,
+            .iicIf = &gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_HARDWARE],
+        },
+        .address = MPU6050_WHO_AM_I_COMPATIBLE_6500,
+        .sampleRateDiv = 0U,
+        .dlpfCfg = 3U,
+        .accelRange = MPU6050_ACCEL_RANGE_4G,
+        .gyroRange = MPU6050_GYRO_RANGE_500DPS,
+    },
+};
+
+
 void mpu6050PortGetDefBind(stMpu6050PortIicBinding *bind)
 {
     if (bind == NULL) {
@@ -55,28 +84,40 @@ void mpu6050PortGetDefBind(stMpu6050PortIicBinding *bind)
 
     bind->type = MPU6050_PORT_IIC_TYPE_HARDWARE;
     bind->bus = (uint8_t)DRVIIC_BUS0;
+    bind->iicIf = mpu6050PortGetBindIicIf(bind->type);
+}
+
+void mpu6050PortGetDefCfg(eMPU6050MapType device, stMpu6050Cfg *cfg)
+{
+    if ((cfg == NULL) || ((uint32_t)device >= (uint32_t)MPU6050_DEV_MAX)) {
+        return;
+    }
+
+    *cfg = gMpu6050PortDefCfg[device];
 }
 
 eMpu6050DrvIicStatus mpu6050PortSetSoftIic(stMpu6050PortIicBinding *bind, eDrvAnlogIicPortMap iic)
 {
     if ((bind == NULL) || ((uint8_t)iic >= (uint8_t)DRVANLOGIIC_MAX)) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     bind->type = MPU6050_PORT_IIC_TYPE_SOFTWARE;
     bind->bus = (uint8_t)iic;
-    return MPU6050_DRV_IIC_STATUS_OK;
+    bind->iicIf = mpu6050PortGetBindIicIf(bind->type);
+    return DRV_STATUS_OK;
 }
 
 eMpu6050DrvIicStatus mpu6050PortSetHardIic(stMpu6050PortIicBinding *bind, eDrvIicPortMap iic)
 {
     if ((bind == NULL) || ((uint8_t)iic >= (uint8_t)DRVIIC_MAX)) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     bind->type = MPU6050_PORT_IIC_TYPE_HARDWARE;
     bind->bus = (uint8_t)iic;
-    return MPU6050_DRV_IIC_STATUS_OK;
+    bind->iicIf = mpu6050PortGetBindIicIf(bind->type);
+    return DRV_STATUS_OK;
 }
 
 void mpu6050PortDelayMs(uint32_t delayMs)
@@ -133,9 +174,11 @@ bool mpu6050PortIsValidBind(const stMpu6050PortIicBinding *bind)
 
     switch (bind->type) {
         case MPU6050_PORT_IIC_TYPE_SOFTWARE:
-            return bind->bus < (uint8_t)DRVANLOGIIC_MAX;
+            return (bind->bus < (uint8_t)DRVANLOGIIC_MAX) &&
+                   (bind->iicIf == &gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_SOFTWARE]);
         case MPU6050_PORT_IIC_TYPE_HARDWARE:
-            return bind->bus < (uint8_t)DRVIIC_MAX;
+            return (bind->bus < (uint8_t)DRVIIC_MAX) &&
+                   (bind->iicIf == &gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_HARDWARE]);
         default:
             return false;
     }
@@ -158,107 +201,74 @@ const stMpu6050PortIicInterface *mpu6050PortGetIicIf(const stMpu6050PortIicBindi
         return NULL;
     }
 
-    return &gMpu6050PortIicInterfaces[bind->type];
+    return bind->iicIf;
+}
+
+static const stMpu6050PortIicInterface *mpu6050PortGetBindIicIf(eMpu6050PortIicType type)
+{
+    if ((uint32_t)type >= (uint32_t)MPU6050_PORT_IIC_TYPE_MAX) {
+        return NULL;
+    }
+
+    if (type == MPU6050_PORT_IIC_TYPE_NONE) {
+        return NULL;
+    }
+
+    return &gMpu6050PortIicInterfaces[type];
 }
 
 static eMpu6050DrvIicStatus mpu6050PortSoftIicInitAdpt(uint8_t bus)
 {
     if (bus >= (uint8_t)DRVANLOGIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvAnlogIicStat(drvAnlogIicInit((eDrvAnlogIicPortMap)bus));
+    return drvAnlogIicInit((eDrvAnlogIicPortMap)bus);
 }
 
 static eMpu6050DrvIicStatus mpu6050PortSoftIicWriteRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVANLOGIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvAnlogIicStat(drvAnlogIicWriteRegister((eDrvAnlogIicPortMap)bus, address, regBuf, regLen, buffer, length));
+    return drvAnlogIicWriteRegister((eDrvAnlogIicPortMap)bus, address, regBuf, regLen, buffer, length);
 }
 
 static eMpu6050DrvIicStatus mpu6050PortSoftIicReadRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVANLOGIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvAnlogIicStat(drvAnlogIicReadRegister((eDrvAnlogIicPortMap)bus, address, regBuf, regLen, buffer, length));
+    return drvAnlogIicReadRegister((eDrvAnlogIicPortMap)bus, address, regBuf, regLen, buffer, length);
 }
 
 static eMpu6050DrvIicStatus mpu6050PortHardIicInitAdpt(uint8_t bus)
 {
     if (bus >= (uint8_t)DRVIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvIicStat(drvIicInit((eDrvIicPortMap)bus));
+    return drvIicInit((eDrvIicPortMap)bus);
 }
 
 static eMpu6050DrvIicStatus mpu6050PortHardIicWriteRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvIicStat(drvIicWriteRegister((eDrvIicPortMap)bus, address, regBuf, regLen, buffer, length));
+    return drvIicWriteRegister((eDrvIicPortMap)bus, address, regBuf, regLen, buffer, length);
 }
 
 static eMpu6050DrvIicStatus mpu6050PortHardIicReadRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length)
 {
     if (bus >= (uint8_t)DRVIIC_MAX) {
-        return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050PortMapDrvIicStat(drvIicReadRegister((eDrvIicPortMap)bus, address, regBuf, regLen, buffer, length));
-}
-
-static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvStatus status)
-{
-    switch (status) {
-        case DRV_STATUS_OK:
-            return MPU6050_DRV_IIC_STATUS_OK;
-        case DRV_STATUS_INVALID_PARAM:
-            return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
-        case DRV_STATUS_NOT_READY:
-            return MPU6050_DRV_IIC_STATUS_NOT_READY;
-        case DRV_STATUS_BUSY:
-            return MPU6050_DRV_IIC_STATUS_BUSY;
-        case DRV_STATUS_TIMEOUT:
-            return MPU6050_DRV_IIC_STATUS_TIMEOUT;
-        case DRV_STATUS_NACK:
-            return MPU6050_DRV_IIC_STATUS_NACK;
-        case DRV_STATUS_UNSUPPORTED:
-            return MPU6050_DRV_IIC_STATUS_UNSUPPORTED;
-        case DRV_STATUS_ERROR:
-        default:
-            return MPU6050_DRV_IIC_STATUS_ERROR;
-    }
-}
-
-static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvStatus status)
-{
-    switch (status) {
-        case DRV_STATUS_OK:
-            return MPU6050_DRV_IIC_STATUS_OK;
-        case DRV_STATUS_INVALID_PARAM:
-            return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
-        case DRV_STATUS_NOT_READY:
-            return MPU6050_DRV_IIC_STATUS_NOT_READY;
-        case DRV_STATUS_BUSY:
-            return MPU6050_DRV_IIC_STATUS_BUSY;
-        case DRV_STATUS_TIMEOUT:
-            return MPU6050_DRV_IIC_STATUS_TIMEOUT;
-        case DRV_STATUS_NACK:
-            return MPU6050_DRV_IIC_STATUS_NACK;
-        case DRV_STATUS_UNSUPPORTED:
-            return MPU6050_DRV_IIC_STATUS_UNSUPPORTED;
-        case DRV_STATUS_ERROR:
-        default:
-            return MPU6050_DRV_IIC_STATUS_ERROR;
-    }
+    return drvIicReadRegister((eDrvIicPortMap)bus, address, regBuf, regLen, buffer, length);
 }
 
 static void mpu6050PortEnableCycleCnt(void)

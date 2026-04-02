@@ -9,59 +9,70 @@
 **********************************************************************************/
 #include "mpu6050.h"
 
+#include "mpu6050_port.h"
+
 #include <stddef.h>
 
+static stMpu6050Device gMpu6050Devices[MPU6050_DEV_MAX];
+static bool gMpu6050DefCfgDone[MPU6050_DEV_MAX] = {false};
+
+static bool mpu6050IsValidDevMap(eMPU6050MapType device);
+static stMpu6050Device *mpu6050GetDevCtx(eMPU6050MapType device);
+static void mpu6050LoadDefCfg(eMPU6050MapType device, stMpu6050Cfg *cfg);
 static bool mpu6050IsValidDev(const stMpu6050Device *device);
 static bool mpu6050IsReadyXfer(const stMpu6050Device *device);
 static bool mpu6050IsCompatDevId(uint8_t devId);
-static eMpu6050Status mpu6050MapIicStat(eMpu6050DrvIicStatus status);
 static const stMpu6050PortIicInterface *mpu6050GetIicIf(const stMpu6050Device *device);
 static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value);
 static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value);
 static eMpu6050Status mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length);
+static void mpu6050ClrRawSample(stMpu6050RawSample *sample);
 static int16_t mpu6050ParseBe16(const uint8_t *buffer);
 
-void mpu6050GetDefCfg(stMpu6050Device *device)
+void mpu6050GetDefCfg(eMPU6050MapType device)
 {
-    if (device == NULL) {
+    stMpu6050Device *lDeviceCtx;
+
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (lDeviceCtx == NULL) {
         return;
     }
 
-    mpu6050PortGetDefBind(&device->iicBind);
-    device->address = MPU6050_IIC_ADDRESS_LOW;
-    device->sampleRateDiv = 0U;
-    device->dlpfCfg = 3U;
-    device->isReady = false;
-    device->accelRange = MPU6050_ACCEL_RANGE_2G;
-    device->gyroRange = MPU6050_GYRO_RANGE_250DPS;
+    mpu6050LoadDefCfg(device, &lDeviceCtx->cfg);
+    mpu6050ClrRawSample(&lDeviceCtx->data);
+    lDeviceCtx->isReady = false;
+    gMpu6050DefCfgDone[device] = true;
 }
 
-eMpu6050Status mpu6050Init(stMpu6050Device *device)
+eMpu6050Status mpu6050Init(eMPU6050MapType device)
 {
     const stMpu6050PortIicInterface *lIicIf;
+    stMpu6050Device *lDeviceCtx;
     uint8_t lDevId;
     uint8_t lValue;
     eMpu6050Status lStatus;
 
-    if (!mpu6050IsValidDev(device)) {
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsValidDev(lDeviceCtx)) {
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    if (!mpu6050PortHasValidIicIf(&device->iicBind)) {
-        return mpu6050PortIsValidBind(&device->iicBind) ?
+    if (!mpu6050PortHasValidIicIf(&lDeviceCtx->cfg.iicBind)) {
+        return mpu6050PortIsValidBind(&lDeviceCtx->cfg.iicBind) ?
                MPU6050_STATUS_NOT_READY :
                MPU6050_STATUS_INVALID_PARAM;
     }
 
-    lIicIf = mpu6050PortGetIicIf(&device->iicBind);
-    lStatus = mpu6050MapIicStat(lIicIf->init(device->iicBind.bus));
+    lIicIf = mpu6050PortGetIicIf(&lDeviceCtx->cfg.iicBind);
+    lStatus = lIicIf->init(lDeviceCtx->cfg.iicBind.bus);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    device->isReady = false;
+    lDeviceCtx->isReady = false;
+    mpu6050ClrRawSample(&lDeviceCtx->data);
 
-    lStatus = mpu6050ReadRegInt(device, MPU6050_REG_WHO_AM_I, &lDevId);
+    lStatus = mpu6050ReadRegInt(lDeviceCtx, MPU6050_REG_WHO_AM_I, &lDevId);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -70,7 +81,7 @@ eMpu6050Status mpu6050Init(stMpu6050Device *device)
         return MPU6050_STATUS_DEVICE_ID_MISMATCH;
     }
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT);
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -78,97 +89,107 @@ eMpu6050Status mpu6050Init(stMpu6050Device *device)
     mpu6050PortDelayMs(MPU6050_PORT_RESET_DELAY_MS);
 
     lValue = MPU6050_PWR1_CLKSEL_PLL_XGYRO;
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_PWR_MGMT_1, lValue);
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_1, lValue);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
     mpu6050PortDelayMs(MPU6050_PORT_WAKE_DELAY_MS);
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_PWR_MGMT_2, 0U);
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_2, 0U);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_SMPLRT_DIV, device->sampleRateDiv);
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_SMPLRT_DIV, lDeviceCtx->cfg.sampleRateDiv);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_CONFIG, (uint8_t)(device->dlpfCfg & 0x07U));
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_CONFIG, (uint8_t)(lDeviceCtx->cfg.dlpfCfg & 0x07U));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_GYRO_CONFIG, (uint8_t)((uint8_t)device->gyroRange << 3U));
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_GYRO_CONFIG, (uint8_t)((uint8_t)lDeviceCtx->cfg.gyroRange << 3U));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = mpu6050WriteRegInt(device, MPU6050_REG_ACCEL_CONFIG, (uint8_t)((uint8_t)device->accelRange << 3U));
+    lStatus = mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_ACCEL_CONFIG, (uint8_t)((uint8_t)lDeviceCtx->cfg.accelRange << 3U));
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    device->isReady = true;
+    lDeviceCtx->isReady = true;
     return MPU6050_STATUS_OK;
 }
 
-bool mpu6050IsReady(const stMpu6050Device *device)
+bool mpu6050IsReady(eMPU6050MapType device)
 {
-    return mpu6050IsReadyXfer(device);
+    return mpu6050IsReadyXfer(mpu6050GetDevCtx(device));
 }
 
-eMpu6050Status mpu6050ReadId(stMpu6050Device *device, uint8_t *devId)
+eMpu6050Status mpu6050ReadId(eMPU6050MapType device, uint8_t *devId)
 {
     const stMpu6050PortIicInterface *lIicIf;
+    stMpu6050Device *lDeviceCtx;
     eMpu6050Status lStatus;
 
-    if ((devId == NULL) || !mpu6050IsValidDev(device)) {
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if ((devId == NULL) || !mpu6050IsValidDev(lDeviceCtx)) {
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    lIicIf = mpu6050PortGetIicIf(&device->iicBind);
+    lIicIf = mpu6050PortGetIicIf(&lDeviceCtx->cfg.iicBind);
     if (lIicIf == NULL) {
         return MPU6050_STATUS_NOT_READY;
     }
 
-    lStatus = mpu6050MapIicStat(lIicIf->init(device->iicBind.bus));
+    lStatus = lIicIf->init(lDeviceCtx->cfg.iicBind.bus);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    return mpu6050ReadRegInt(device, MPU6050_REG_WHO_AM_I, devId);
+    return mpu6050ReadRegInt(lDeviceCtx, MPU6050_REG_WHO_AM_I, devId);
 }
 
-eMpu6050Status mpu6050ReadReg(stMpu6050Device *device, uint8_t regAddr, uint8_t *value)
+eMpu6050Status mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *value)
 {
-    if (!mpu6050IsReadyXfer(device)) {
+    stMpu6050Device *lDeviceCtx;
+
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsReadyXfer(lDeviceCtx)) {
         return MPU6050_STATUS_NOT_READY;
     }
 
-    return mpu6050ReadRegInt(device, regAddr, value);
+    return mpu6050ReadRegInt(lDeviceCtx, regAddr, value);
 }
 
-eMpu6050Status mpu6050WriteReg(stMpu6050Device *device, uint8_t regAddr, uint8_t value)
+eMpu6050Status mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t value)
 {
-    if (!mpu6050IsReadyXfer(device)) {
+    stMpu6050Device *lDeviceCtx;
+
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsReadyXfer(lDeviceCtx)) {
         return MPU6050_STATUS_NOT_READY;
     }
 
-    return mpu6050WriteRegInt(device, regAddr, value);
+    return mpu6050WriteRegInt(lDeviceCtx, regAddr, value);
 }
 
-eMpu6050Status mpu6050SetSleep(stMpu6050Device *device, bool enable)
+eMpu6050Status mpu6050SetSleep(eMPU6050MapType device, bool enable)
 {
+    stMpu6050Device *lDeviceCtx;
     uint8_t lValue;
     eMpu6050Status lStatus;
 
-    if (!mpu6050IsReadyXfer(device)) {
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsReadyXfer(lDeviceCtx)) {
         return MPU6050_STATUS_NOT_READY;
     }
 
-    lStatus = mpu6050ReadRegInt(device, MPU6050_REG_PWR_MGMT_1, &lValue);
+    lStatus = mpu6050ReadRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_1, &lValue);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
@@ -180,11 +201,12 @@ eMpu6050Status mpu6050SetSleep(stMpu6050Device *device, bool enable)
         lValue = (uint8_t)((lValue & (uint8_t)(~0x07U)) | MPU6050_PWR1_CLKSEL_PLL_XGYRO);
     }
 
-    return mpu6050WriteRegInt(device, MPU6050_REG_PWR_MGMT_1, lValue);
+    return mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_1, lValue);
 }
 
-eMpu6050Status mpu6050ReadRaw(stMpu6050Device *device, stMpu6050RawSample *sample)
+eMpu6050Status mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample)
 {
+    stMpu6050Device *lDeviceCtx;
     uint8_t lBuffer[MPU6050_SAMPLE_BYTES];
     eMpu6050Status lStatus;
 
@@ -192,26 +214,28 @@ eMpu6050Status mpu6050ReadRaw(stMpu6050Device *device, stMpu6050RawSample *sampl
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    if (!mpu6050IsReadyXfer(device)) {
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsReadyXfer(lDeviceCtx)) {
         return MPU6050_STATUS_NOT_READY;
     }
 
-    lStatus = mpu6050ReadRegsInt(device, MPU6050_REG_ACCEL_XOUT_H, lBuffer, MPU6050_SAMPLE_BYTES);
+    lStatus = mpu6050ReadRegsInt(lDeviceCtx, MPU6050_REG_ACCEL_XOUT_H, lBuffer, MPU6050_SAMPLE_BYTES);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    sample->accelX = mpu6050ParseBe16(&lBuffer[0]);
-    sample->accelY = mpu6050ParseBe16(&lBuffer[2]);
-    sample->accelZ = mpu6050ParseBe16(&lBuffer[4]);
-    sample->temperature = mpu6050ParseBe16(&lBuffer[6]);
-    sample->gyroX = mpu6050ParseBe16(&lBuffer[8]);
-    sample->gyroY = mpu6050ParseBe16(&lBuffer[10]);
-    sample->gyroZ = mpu6050ParseBe16(&lBuffer[12]);
+    lDeviceCtx->data.accelX = mpu6050ParseBe16(&lBuffer[0]);
+    lDeviceCtx->data.accelY = mpu6050ParseBe16(&lBuffer[2]);
+    lDeviceCtx->data.accelZ = mpu6050ParseBe16(&lBuffer[4]);
+    lDeviceCtx->data.temperature = mpu6050ParseBe16(&lBuffer[6]);
+    lDeviceCtx->data.gyroX = mpu6050ParseBe16(&lBuffer[8]);
+    lDeviceCtx->data.gyroY = mpu6050ParseBe16(&lBuffer[10]);
+    lDeviceCtx->data.gyroZ = mpu6050ParseBe16(&lBuffer[12]);
+    *sample = lDeviceCtx->data;
     return MPU6050_STATUS_OK;
 }
 
-eMpu6050Status mpu6050ReadTempCdC(stMpu6050Device *device, int32_t *tempCdC)
+eMpu6050Status mpu6050ReadTempCdC(eMPU6050MapType device, int32_t *tempCdC)
 {
     stMpu6050RawSample lSample;
     eMpu6050Status lStatus;
@@ -229,30 +253,68 @@ eMpu6050Status mpu6050ReadTempCdC(stMpu6050Device *device, int32_t *tempCdC)
     return MPU6050_STATUS_OK;
 }
 
+static bool mpu6050IsValidDevMap(eMPU6050MapType device)
+{
+    return ((uint32_t)device < (uint32_t)MPU6050_DEV_MAX);
+}
+
+static stMpu6050Device *mpu6050GetDevCtx(eMPU6050MapType device)
+{
+    if (!mpu6050IsValidDevMap(device)) {
+        return NULL;
+    }
+
+    if (!gMpu6050DefCfgDone[device]) {
+        mpu6050LoadDefCfg(device, &gMpu6050Devices[device].cfg);
+        mpu6050ClrRawSample(&gMpu6050Devices[device].data);
+        gMpu6050Devices[device].isReady = false;
+        gMpu6050DefCfgDone[device] = true;
+    }
+
+    return &gMpu6050Devices[device];
+}
+
+static void mpu6050LoadDefCfg(eMPU6050MapType device, stMpu6050Cfg *cfg)
+{
+    stMpu6050Cfg lPortCfg;
+
+    if (cfg == NULL) {
+        return;
+    }
+
+    mpu6050PortGetDefCfg(device, &lPortCfg);
+    cfg->iicBind = lPortCfg.iicBind;
+    cfg->address = lPortCfg.address;
+    cfg->sampleRateDiv = lPortCfg.sampleRateDiv;
+    cfg->dlpfCfg = lPortCfg.dlpfCfg;
+    cfg->accelRange = (eMpu6050AccelRange)lPortCfg.accelRange;
+    cfg->gyroRange = (eMpu6050GyroRange)lPortCfg.gyroRange;
+}
+
 static bool mpu6050IsValidDev(const stMpu6050Device *device)
 {
     if (device == NULL) {
         return false;
     }
 
-    if (!mpu6050PortIsValidBind(&device->iicBind)) {
+    if (!mpu6050PortIsValidBind(&device->cfg.iicBind)) {
         return false;
     }
 
-    if ((device->address != MPU6050_IIC_ADDRESS_LOW) &&
-        (device->address != MPU6050_IIC_ADDRESS_HIGH)) {
+    if ((device->cfg.address != MPU6050_IIC_ADDRESS_LOW) &&
+        (device->cfg.address != MPU6050_IIC_ADDRESS_HIGH)) {
         return false;
     }
 
-    if (device->dlpfCfg > 6U) {
+    if (device->cfg.dlpfCfg > 6U) {
         return false;
     }
 
-    if (device->accelRange >= MPU6050_ACCEL_RANGE_MAX) {
+    if (device->cfg.accelRange >= MPU6050_ACCEL_RANGE_MAX) {
         return false;
     }
 
-    if (device->gyroRange >= MPU6050_GYRO_RANGE_MAX) {
+    if (device->cfg.gyroRange >= MPU6050_GYRO_RANGE_MAX) {
         return false;
     }
 
@@ -263,7 +325,7 @@ static bool mpu6050IsReadyXfer(const stMpu6050Device *device)
 {
     return (device != NULL) &&
            device->isReady &&
-           mpu6050PortHasValidIicIf(&device->iicBind);
+           mpu6050PortHasValidIicIf(&device->cfg.iicBind);
 }
 
 static bool mpu6050IsCompatDevId(uint8_t devId)
@@ -272,35 +334,13 @@ static bool mpu6050IsCompatDevId(uint8_t devId)
            (devId == MPU6050_WHO_AM_I_COMPATIBLE_6500);
 }
 
-static eMpu6050Status mpu6050MapIicStat(eMpu6050DrvIicStatus status)
-{
-    switch (status) {
-        case MPU6050_DRV_IIC_STATUS_OK:
-            return MPU6050_STATUS_OK;
-        case MPU6050_DRV_IIC_STATUS_INVALID_PARAM:
-            return MPU6050_STATUS_INVALID_PARAM;
-        case MPU6050_DRV_IIC_STATUS_NOT_READY:
-            return MPU6050_STATUS_NOT_READY;
-        case MPU6050_DRV_IIC_STATUS_BUSY:
-            return MPU6050_STATUS_BUSY;
-        case MPU6050_DRV_IIC_STATUS_TIMEOUT:
-            return MPU6050_STATUS_TIMEOUT;
-        case MPU6050_DRV_IIC_STATUS_NACK:
-            return MPU6050_STATUS_NACK;
-        case MPU6050_DRV_IIC_STATUS_UNSUPPORTED:
-        case MPU6050_DRV_IIC_STATUS_ERROR:
-        default:
-            return MPU6050_STATUS_ERROR;
-    }
-}
-
 static const stMpu6050PortIicInterface *mpu6050GetIicIf(const stMpu6050Device *device)
 {
-    if ((device == NULL) || !mpu6050PortHasValidIicIf(&device->iicBind)) {
+    if ((device == NULL) || !mpu6050PortHasValidIicIf(&device->cfg.iicBind)) {
         return NULL;
     }
 
-    return mpu6050PortGetIicIf(&device->iicBind);
+    return mpu6050PortGetIicIf(&device->cfg.iicBind);
 }
 
 static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value)
@@ -312,7 +352,7 @@ static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t 
         return MPU6050_STATUS_NOT_READY;
     }
 
-    return mpu6050MapIicStat(lIicIf->writeReg(device->iicBind.bus, device->address, &regAddr, 1U, &value, 1U));
+    return lIicIf->writeReg(device->cfg.iicBind.bus, device->cfg.address, &regAddr, 1U, &value, 1U);
 }
 
 static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value)
@@ -328,7 +368,7 @@ static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t r
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStat(lIicIf->readReg(device->iicBind.bus, device->address, &regAddr, 1U, value, 1U));
+    return lIicIf->readReg(device->cfg.iicBind.bus, device->cfg.address, &regAddr, 1U, value, 1U);
 }
 
 static eMpu6050Status mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length)
@@ -344,7 +384,22 @@ static eMpu6050Status mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t 
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    return mpu6050MapIicStat(lIicIf->readReg(device->iicBind.bus, device->address, &regAddr, 1U, buffer, length));
+    return lIicIf->readReg(device->cfg.iicBind.bus, device->cfg.address, &regAddr, 1U, buffer, length);
+}
+
+static void mpu6050ClrRawSample(stMpu6050RawSample *sample)
+{
+    if (sample == NULL) {
+        return;
+    }
+
+    sample->accelX = 0;
+    sample->accelY = 0;
+    sample->accelZ = 0;
+    sample->temperature = 0;
+    sample->gyroX = 0;
+    sample->gyroY = 0;
+    sample->gyroZ = 0;
 }
 
 static int16_t mpu6050ParseBe16(const uint8_t *buffer)

@@ -19,33 +19,13 @@
 #include "gd32f4xx.h"
 #endif
 
-static eW25qxxxPortStatus w25qxxxPortMapDrvSpiStatus(eDrvStatus status)
-{
-    switch (status) {
-        case DRV_STATUS_OK:
-            return W25QXXX_PORT_STATUS_OK;
-        case DRV_STATUS_INVALID_PARAM:
-            return W25QXXX_PORT_STATUS_INVALID_PARAM;
-        case DRV_STATUS_NOT_READY:
-            return W25QXXX_PORT_STATUS_NOT_READY;
-        case DRV_STATUS_BUSY:
-            return W25QXXX_PORT_STATUS_BUSY;
-        case DRV_STATUS_TIMEOUT:
-            return W25QXXX_PORT_STATUS_TIMEOUT;
-        case DRV_STATUS_UNSUPPORTED:
-            return W25QXXX_PORT_STATUS_UNSUPPORTED;
-        default:
-            return W25QXXX_PORT_STATUS_ERROR;
-    }
-}
-
 static eW25qxxxPortStatus w25qxxxPortDrvSpiInit(const stW25qxxxPortBinding *binding)
 {
     if ((binding == NULL) || (binding->type != W25QXXX_PORT_DRVSPI) || (binding->spi >= DRVSPI_MAX)) {
-        return W25QXXX_PORT_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
-    return w25qxxxPortMapDrvSpiStatus(drvSpiInit(binding->spi));
+    return drvSpiInit(binding->spi);
 }
 
 static eW25qxxxPortStatus w25qxxxPortDrvSpiTransfer(const stW25qxxxPortBinding *binding, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength, uint8_t readFillData)
@@ -53,7 +33,7 @@ static eW25qxxxPortStatus w25qxxxPortDrvSpiTransfer(const stW25qxxxPortBinding *
     stDrvSpiTransfer lTransfer;
 
     if ((binding == NULL) || (binding->type != W25QXXX_PORT_DRVSPI) || (binding->spi >= DRVSPI_MAX)) {
-        return W25QXXX_PORT_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     lTransfer.writeBuffer = writeBuffer;
@@ -64,7 +44,7 @@ static eW25qxxxPortStatus w25qxxxPortDrvSpiTransfer(const stW25qxxxPortBinding *
     lTransfer.readLength = readLength;
     lTransfer.readFillData = readFillData;
 
-    return w25qxxxPortMapDrvSpiStatus(drvSpiTransfer(binding->spi, &lTransfer));
+    return drvSpiTransfer(binding->spi, &lTransfer);
 }
 
 #if (REP_MCU_PLATFORM == REP_MCU_PLATFORM_GD32)
