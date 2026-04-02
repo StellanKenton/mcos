@@ -13,6 +13,15 @@ through the BSP hook table.
 - `drviic.c`: Common driver implementation with locking and helper transactions.
 - `drviic_port.h`: Logical bus identifiers and default option macros.
 - `drviic_port.c`: Project binding table for hardware-specific IIC operations.
+- `bsphardiic.h`: GD32F4 BSP hook declarations consumed by `drviic_port.c`.
+- `bsphardiic.c`: GD32F4 I2C controller implementation with blocking transfers and bus recovery.
+
+## Current Project Binding
+
+- `DRVIIC_BUS0` is bound in `drviic_port.c` to `bspHardIicInit()`, `bspHardIicTransfer()`, and `bspHardIicRecoverBus()`.
+- `bsphardiic.c` maps `DRVIIC_BUS0` to `I2C0` on `PB6`/`PB7`.
+- The current BSP config uses a 100 kHz bus clock.
+- `drviic_port.c` sets `defaultTimeoutMs` to `100` ms for `drvIicTransfer()` when the caller passes `0`.
 
 ## Public API
 
@@ -61,7 +70,7 @@ Transfer contract:
 
 ## Recommended Bring-Up Steps
 
-1. Fill the bus entry in `drviic_port.c` with real controller hooks.
+1. Review the bus entry in `drviic_port.c` and confirm it matches the target board wiring.
 2. Configure the matching GD32 I2C peripheral clock source, pins, and speed in the BSP `init()` hook.
 3. Call `drvIicInit()` once during system initialization.
 4. Validate `drvIicReadRegister()` against one known slave device.
@@ -69,6 +78,5 @@ Transfer contract:
 
 ## Remaining Hardware Risks
 
-- The current port file ships with all hooks set to `NULL`, so the bus returns `DRVIIC_STATUS_NOT_READY` until it is bound to real hardware.
 - Final timeout behavior depends on the controller polling or interrupt strategy used in the BSP layer.
 - Hardware validation is still required for pin mux, pull-up value, clock speed, and repeated-start behavior.

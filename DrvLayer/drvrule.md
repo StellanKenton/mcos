@@ -1,6 +1,6 @@
 # DrvLayer 新驱动目录构建规范
 
-当需要在 `drvlayer` 下新增一个新的驱动目录时，使用本文档约束目录结构、命名方式、职责边界和接入方式。本文档参考 `DrvGpio` 的组织方式，目标是让后续新增的 `DrvXxx` 模块都保持一致的抽象层次，避免应用层直接依赖 MCU SDK 或板级细节。
+当需要在 `drvlayer` 下新增一个新的驱动目录时，使用本文档约束目录结构、命名方式、职责边界和接入方式。本文档参考 `drvgpio` 和 `drvuart` 的组织方式，目标是让后续新增的 `DrvXxx` 模块都保持一致的抽象层次，避免应用层直接依赖 MCU SDK 或板级细节。
 
 ## 目标
 
@@ -43,7 +43,7 @@ DrvXxx/
     drvxxx.c
     drvxxx_port.h
     drvxxx_port.c
-    drvxxx_prompt.md      // Optional integration prompt or notes
+    drvxxx.md      // Optional integration prompt or notes
 Bsp/
     bspxxx.h
     bspxxx.c
@@ -61,7 +61,7 @@ Bsp/
 
 例如：
 
-- 目录：`DrvSpi`
+- 目录：`drvspi`
 - 公共头文件：`drvspi.h`
 - 公共实现：`drvspi.c`
 - 逻辑映射：`drvspi_port.h`
@@ -228,7 +228,7 @@ typedef enum eDrvSpiPortMap {
 任务要求：
 1. 先检查 `rule.md`，并遵守仓库中的编码规范。
 2. 检查 `drvlayer` 下与目标模块最接近的现有目录，并复用局部主流结构。
-3. 在 `drvlayer` 下创建新的 `drvXxx` 目录，至少包含公共层文件。
+3. 在 `drvlayer` 下创建新的 `drvxxx` 目录，至少包含公共层文件。
 4. 公共层对应用层暴露稳定的 `drvXxx*` 接口，应用层不能直接调用 MCU SDK。
 5. 所有 MCU、板级、时钟、引脚、DMA、中断和寄存器细节都必须封装在 BSP 层内部。
 6. 如果该模块需要逻辑资源编号，先创建 `drvxxx_port.h` 或 `drvxxx_portmap.h`，再让 BSP 与其对应。

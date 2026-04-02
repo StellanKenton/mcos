@@ -162,38 +162,38 @@ static void drvSpiSetCsActive(stDrvSpiBspInterface *bspInterface, bool isActive)
 }
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
-static eDrvSpiStatus drvSpiEnsureMutex(eDrvSpiPortMap spi)
+static eDrvStatus drvSpiEnsureMutex(eDrvSpiPortMap spi)
 {
     if (!drvSpiIsValid(spi)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     if (gDrvSpiMutex[spi] == NULL) {
         gDrvSpiMutex[spi] = xSemaphoreCreateMutex();
         if (gDrvSpiMutex[spi] == NULL) {
-            return DRVSPI_STATUS_ERROR;
+            return DRV_STATUS_ERROR;
         }
     }
 
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 }
 #endif
 
-static eDrvSpiStatus drvSpiLockBus(eDrvSpiPortMap spi)
+static eDrvStatus drvSpiLockBus(eDrvSpiPortMap spi)
 {
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
-    if (drvSpiEnsureMutex(spi) != DRVSPI_STATUS_OK) {
-        return DRVSPI_STATUS_ERROR;
+    if (drvSpiEnsureMutex(spi) != DRV_STATUS_OK) {
+        return DRV_STATUS_ERROR;
     }
 
     if (xSemaphoreTake(gDrvSpiMutex[spi], pdMS_TO_TICKS(DRVSPI_LOCK_WAIT_MS)) != pdTRUE) {
-        return DRVSPI_STATUS_BUSY;
+        return DRV_STATUS_BUSY;
     }
 
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 #else
     if (!drvSpiIsValid(spi)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_NONE) && (REP_MCU_PLATFORM == REP_MCU_PLATFORM_GD32)
@@ -204,7 +204,7 @@ static eDrvSpiStatus drvSpiLockBus(eDrvSpiPortMap spi)
 #if (REP_RTOS_SYSTEM == REP_RTOS_NONE) && (REP_MCU_PLATFORM == REP_MCU_PLATFORM_GD32)
         drvSpiExitCritical();
 #endif
-        return DRVSPI_STATUS_BUSY;
+        return DRV_STATUS_BUSY;
     }
 
     gDrvSpiBusBusy[spi] = true;
@@ -212,7 +212,7 @@ static eDrvSpiStatus drvSpiLockBus(eDrvSpiPortMap spi)
 #if (REP_RTOS_SYSTEM == REP_RTOS_NONE) && (REP_MCU_PLATFORM == REP_MCU_PLATFORM_GD32)
     drvSpiExitCritical();
 #endif
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 #endif
 }
 
@@ -239,12 +239,12 @@ static void drvSpiUnlockBus(eDrvSpiPortMap spi)
 #endif
 }
 
-static eDrvSpiStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint8_t fillData, uint32_t timeoutMs)
+static eDrvStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint8_t fillData, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface = drvSpiGetBspInterface(spi);
 
     if ((lBspInterface == NULL) || (lBspInterface->transfer == NULL)) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
     return lBspInterface->transfer(spi,
@@ -255,13 +255,13 @@ static eDrvSpiStatus drvSpiRawTransferLocked(eDrvSpiPortMap spi, const uint8_t *
                                    drvSpiGetTimeoutMs(lBspInterface, timeoutMs));
 }
 
-static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
+static eDrvStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface = drvSpiGetBspInterface(spi);
-    eDrvSpiStatus lStatus;
+    eDrvStatus lStatus;
 
     if ((lBspInterface == NULL) || (lBspInterface->transfer == NULL)) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
     drvSpiSetCsActive(lBspInterface, true);
@@ -273,7 +273,7 @@ static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTran
                                           transfer->writeLength,
                                           transfer->readFillData,
                                           timeoutMs);
-        if (lStatus != DRVSPI_STATUS_OK) {
+        if (lStatus != DRV_STATUS_OK) {
             drvSpiSetCsActive(lBspInterface, false);
             return lStatus;
         }
@@ -286,7 +286,7 @@ static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTran
                                           transfer->secondWriteLength,
                                           transfer->readFillData,
                                           timeoutMs);
-        if (lStatus != DRVSPI_STATUS_OK) {
+        if (lStatus != DRV_STATUS_OK) {
             drvSpiSetCsActive(lBspInterface, false);
             return lStatus;
         }
@@ -304,59 +304,59 @@ static eDrvSpiStatus drvSpiTransferLocked(eDrvSpiPortMap spi, const stDrvSpiTran
     }
 
     drvSpiSetCsActive(lBspInterface, false);
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 }
 
-eDrvSpiStatus drvSpiInit(eDrvSpiPortMap spi)
+eDrvStatus drvSpiInit(eDrvSpiPortMap spi)
 {
     stDrvSpiBspInterface *lBspInterface = NULL;
-    eDrvSpiStatus lStatus;
+    eDrvStatus lStatus;
 
     if (!drvSpiIsValid(spi)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     if (drvSpiIsInitialized(spi)) {
-        return DRVSPI_STATUS_OK;
+        return DRV_STATUS_OK;
     }
 
     if (!drvSpiHasValidBspInterface(spi)) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
     lBspInterface = drvSpiGetBspInterface(spi);
     if (lBspInterface == NULL) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
     lStatus = drvSpiEnsureMutex(spi);
-    if (lStatus != DRVSPI_STATUS_OK) {
+    if (lStatus != DRV_STATUS_OK) {
         return lStatus;
     }
 #endif
 
     lStatus = lBspInterface->init(spi);
-    if (lStatus != DRVSPI_STATUS_OK) {
+    if (lStatus != DRV_STATUS_OK) {
         return lStatus;
     }
 
     drvSpiInitCsControl(lBspInterface);
     gDrvSpiInitialized[spi] = true;
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 }
 
-eDrvSpiStatus drvSpiSetCsControl(eDrvSpiPortMap spi, const stDrvSpiCsControl *control)
+eDrvStatus drvSpiSetCsControl(eDrvSpiPortMap spi, const stDrvSpiCsControl *control)
 {
     stDrvSpiBspInterface *lBspInterface = drvSpiGetBspInterface(spi);
 
     if (!drvSpiIsValid(spi) || (lBspInterface == NULL)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     if (control == NULL) {
         (void)memset(&lBspInterface->csControl, 0, sizeof(lBspInterface->csControl));
-        return DRVSPI_STATUS_OK;
+        return DRV_STATUS_OK;
     }
 
     lBspInterface->csControl = *control;
@@ -364,23 +364,23 @@ eDrvSpiStatus drvSpiSetCsControl(eDrvSpiPortMap spi, const stDrvSpiCsControl *co
         drvSpiInitCsControl(lBspInterface);
     }
 
-    return DRVSPI_STATUS_OK;
+    return DRV_STATUS_OK;
 }
 
-eDrvSpiStatus drvSpiTransferTimeout(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
+eDrvStatus drvSpiTransferTimeout(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer, uint32_t timeoutMs)
 {
-    eDrvSpiStatus lStatus;
+    eDrvStatus lStatus;
 
     if (!drvSpiIsValid(spi) || !drvSpiIsValidTransfer(transfer)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     if (!drvSpiIsInitialized(spi)) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
     lStatus = drvSpiLockBus(spi);
-    if (lStatus != DRVSPI_STATUS_OK) {
+    if (lStatus != DRV_STATUS_OK) {
         return lStatus;
     }
 
@@ -389,12 +389,12 @@ eDrvSpiStatus drvSpiTransferTimeout(eDrvSpiPortMap spi, const stDrvSpiTransfer *
     return lStatus;
 }
 
-eDrvSpiStatus drvSpiTransfer(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer)
+eDrvStatus drvSpiTransfer(eDrvSpiPortMap spi, const stDrvSpiTransfer *transfer)
 {
     return drvSpiTransferTimeout(spi, transfer, 0U);
 }
 
-eDrvSpiStatus drvSpiWriteTimeout(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
+eDrvStatus drvSpiWriteTimeout(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = buffer,
@@ -409,12 +409,12 @@ eDrvSpiStatus drvSpiWriteTimeout(eDrvSpiPortMap spi, const uint8_t *buffer, uint
     return drvSpiTransferTimeout(spi, &lTransfer, timeoutMs);
 }
 
-eDrvSpiStatus drvSpiWrite(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t length)
+eDrvStatus drvSpiWrite(eDrvSpiPortMap spi, const uint8_t *buffer, uint16_t length)
 {
     return drvSpiWriteTimeout(spi, buffer, length, 0U);
 }
 
-eDrvSpiStatus drvSpiReadTimeout(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
+eDrvStatus drvSpiReadTimeout(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = NULL,
@@ -429,12 +429,12 @@ eDrvSpiStatus drvSpiReadTimeout(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t le
     return drvSpiTransferTimeout(spi, &lTransfer, timeoutMs);
 }
 
-eDrvSpiStatus drvSpiRead(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length)
+eDrvStatus drvSpiRead(eDrvSpiPortMap spi, uint8_t *buffer, uint16_t length)
 {
     return drvSpiReadTimeout(spi, buffer, length, 0U);
 }
 
-eDrvSpiStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength, uint32_t timeoutMs)
+eDrvStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength, uint32_t timeoutMs)
 {
     stDrvSpiTransfer lTransfer = {
         .writeBuffer = writeBuffer,
@@ -449,29 +449,29 @@ eDrvSpiStatus drvSpiWriteReadTimeout(eDrvSpiPortMap spi, const uint8_t *writeBuf
     return drvSpiTransferTimeout(spi, &lTransfer, timeoutMs);
 }
 
-eDrvSpiStatus drvSpiWriteRead(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength)
+eDrvStatus drvSpiWriteRead(eDrvSpiPortMap spi, const uint8_t *writeBuffer, uint16_t writeLength, uint8_t *readBuffer, uint16_t readLength)
 {
     return drvSpiWriteReadTimeout(spi, writeBuffer, writeLength, readBuffer, readLength, 0U);
 }
 
-eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint32_t timeoutMs)
+eDrvStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length, uint32_t timeoutMs)
 {
     stDrvSpiBspInterface *lBspInterface;
-    eDrvSpiStatus lStatus;
+    eDrvStatus lStatus;
 
     if (!drvSpiIsValid(spi) ||
         !drvSpiIsValidConstBuffer(txBuffer, length) ||
         !drvSpiIsValidMutableBuffer(rxBuffer, length) ||
         (length == 0U)) {
-        return DRVSPI_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     if (!drvSpiIsInitialized(spi)) {
-        return DRVSPI_STATUS_NOT_READY;
+        return DRV_STATUS_NOT_READY;
     }
 
     lStatus = drvSpiLockBus(spi);
-    if (lStatus != DRVSPI_STATUS_OK) {
+    if (lStatus != DRV_STATUS_OK) {
         return lStatus;
     }
 
@@ -483,7 +483,7 @@ eDrvSpiStatus drvSpiExchangeTimeout(eDrvSpiPortMap spi, const uint8_t *txBuffer,
     return lStatus;
 }
 
-eDrvSpiStatus drvSpiExchange(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length)
+eDrvStatus drvSpiExchange(eDrvSpiPortMap spi, const uint8_t *txBuffer, uint8_t *rxBuffer, uint16_t length)
 {
     return drvSpiExchangeTimeout(spi, txBuffer, rxBuffer, length, 0U);
 }

@@ -37,21 +37,21 @@ stRingBuffer *drvUartPortGetRingBuffer(eDrvUartPortMap uart)
     return &gUartRxBuffer[uart];
 }
 
-eDrvUartStatus drvUartPortGetStorageConfig(eDrvUartPortMap uart, uint8_t **storage, uint32_t *capacity)
+eDrvStatus drvUartPortGetStorageConfig(eDrvUartPortMap uart, uint8_t **storage, uint32_t *capacity)
 {
     if ((storage == NULL) || (capacity == NULL)) {
-        return DRVUART_STATUS_INVALID_PARAM;
+        return DRV_STATUS_INVALID_PARAM;
     }
 
     switch (uart) {
         case DRVUART_DEBUG:
             *storage = gDrvUartBspInterface[uart].Buffer;
             *capacity = DRVUART_RECVLEN_DEBUGUART;
-            return DRVUART_STATUS_OK;
+            return DRV_STATUS_OK;
         default:
             *storage = NULL;
             *capacity = 0U;
-            return DRVUART_STATUS_UNSUPPORTED;
+            return DRV_STATUS_UNSUPPORTED;
     }
 }
 
@@ -67,7 +67,7 @@ int32_t drvUartLogWrite(const uint8_t *buffer, uint16_t length)
         return 0;
     }
 
-    if (drvUartTransmitDma(DRVUART_DEBUG, buffer, length) != DRVUART_STATUS_OK) {
+    if (drvUartTransmitDma(DRVUART_DEBUG, buffer, length) != DRV_STATUS_OK) {
         return 0;
     }
 

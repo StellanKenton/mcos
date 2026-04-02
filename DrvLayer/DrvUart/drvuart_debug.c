@@ -232,7 +232,7 @@ static eConsoleCommandResult drvUartDebugFlushRxBuffer(uint32_t transport)
             lChunk = DRVUART_DEBUG_READ_MAX_LENGTH;
         }
 
-        if (drvUartReceive(lPort->uart, lScratch, lChunk) != DRVUART_STATUS_OK) {
+        if (drvUartReceive(lPort->uart, lScratch, lChunk) != DRV_STATUS_OK) {
             return CONSOLE_COMMAND_RESULT_ERROR;
         }
 
@@ -362,7 +362,7 @@ static eConsoleCommandResult drvUartDebugReadRxData(uint32_t transport, uint32_t
     }
 
     lReadLength = (uint16_t)length;
-    if (drvUartReceive(lPort->uart, lData, lReadLength) != DRVUART_STATUS_OK) {
+    if (drvUartReceive(lPort->uart, lData, lReadLength) != DRV_STATUS_OK) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
 
@@ -427,7 +427,7 @@ static eConsoleCommandResult drvUartDebugSendText(uint32_t transport, int argc, 
         lBuffer[lLength] = '\0';
     }
 
-    if (drvUartTransmitDma(lPort->uart, (const uint8_t *)lBuffer, lLength) != DRVUART_STATUS_OK) {
+    if (drvUartTransmitDma(lPort->uart, (const uint8_t *)lBuffer, lLength) != DRV_STATUS_OK) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
 
@@ -464,7 +464,7 @@ static eConsoleCommandResult drvUartDebugSendHex(uint32_t transport, int argc, c
         lLength++;
     }
 
-    if (drvUartTransmitDma(lPort->uart, lBuffer, lLength) != DRVUART_STATUS_OK) {
+    if (drvUartTransmitDma(lPort->uart, lBuffer, lLength) != DRV_STATUS_OK) {
         return CONSOLE_COMMAND_RESULT_ERROR;
     }
 

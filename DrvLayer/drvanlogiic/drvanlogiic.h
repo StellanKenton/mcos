@@ -14,22 +14,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "rep_config.h"
 #include "drvanlogiic_port.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum eDrvAnlogIicStatus {
-    DRVANLOGIIC_STATUS_OK = 0,
-    DRVANLOGIIC_STATUS_INVALID_PARAM,
-    DRVANLOGIIC_STATUS_NOT_READY,
-    DRVANLOGIIC_STATUS_BUSY,
-    DRVANLOGIIC_STATUS_TIMEOUT,
-    DRVANLOGIIC_STATUS_NACK,
-    DRVANLOGIIC_STATUS_UNSUPPORTED,
-    DRVANLOGIIC_STATUS_ERROR,
-} eDrvAnlogIicStatus;
 
 typedef void (*drvAnlogIicBspInitFunc)(eDrvAnlogIicPortMap iic);
 typedef void (*drvAnlogIicBspDriveLineFunc)(eDrvAnlogIicPortMap iic, bool releaseHigh);
@@ -57,18 +48,18 @@ typedef struct stDrvAnlogIicTransfer {
     uint16_t secondWriteLength;
 } stDrvAnlogIicTransfer;
 
-eDrvAnlogIicStatus drvAnlogIicInit(eDrvAnlogIicPortMap iic);
-eDrvAnlogIicStatus drvAnlogIicRecoverBus(eDrvAnlogIicPortMap iic);
-eDrvAnlogIicStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer);
-eDrvAnlogIicStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer, uint32_t timeoutMs);
-eDrvAnlogIicStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length);
-eDrvAnlogIicStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvAnlogIicStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length);
-eDrvAnlogIicStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvAnlogIicStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
-eDrvAnlogIicStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvAnlogIicStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
-eDrvAnlogIicStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvAnlogIicInit(eDrvAnlogIicPortMap iic);
+eDrvStatus drvAnlogIicRecoverBus(eDrvAnlogIicPortMap iic);
+eDrvStatus drvAnlogIicTransfer(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer);
+eDrvStatus drvAnlogIicTransferTimeout(eDrvAnlogIicPortMap iic, const stDrvAnlogIicTransfer *transfer, uint32_t timeoutMs);
+eDrvStatus drvAnlogIicWrite(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvAnlogIicWriteTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvAnlogIicRead(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length);
+eDrvStatus drvAnlogIicReadTimeout(eDrvAnlogIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvAnlogIicWriteRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvAnlogIicWriteRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvAnlogIicReadRegister(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
+eDrvStatus drvAnlogIicReadRegisterTimeout(eDrvAnlogIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
 
 #ifdef __cplusplus
 }

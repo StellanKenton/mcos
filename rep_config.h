@@ -36,6 +36,17 @@ extern "C" {
 #define REP_LOG_LEVEL_INFO            3
 #define REP_LOG_LEVEL_DEBUG           4
 
+typedef enum eDrvStatus {
+	DRV_STATUS_OK = 0,
+	DRV_STATUS_INVALID_PARAM,
+	DRV_STATUS_NOT_READY,
+	DRV_STATUS_BUSY,
+	DRV_STATUS_TIMEOUT,
+	DRV_STATUS_NACK,
+	DRV_STATUS_UNSUPPORTED,
+	DRV_STATUS_ERROR,
+} eDrvStatus;
+
 #define REP_LOG_OUTPUT_PORT           0x02U         // number of active log interfaces
 
 #ifndef REP_LOG_LEVEL

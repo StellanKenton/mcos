@@ -19,20 +19,20 @@
 #include "gd32f4xx.h"
 #endif
 
-static eW25qxxxPortStatus w25qxxxPortMapDrvSpiStatus(eDrvSpiStatus status)
+static eW25qxxxPortStatus w25qxxxPortMapDrvSpiStatus(eDrvStatus status)
 {
     switch (status) {
-        case DRVSPI_STATUS_OK:
+        case DRV_STATUS_OK:
             return W25QXXX_PORT_STATUS_OK;
-        case DRVSPI_STATUS_INVALID_PARAM:
+        case DRV_STATUS_INVALID_PARAM:
             return W25QXXX_PORT_STATUS_INVALID_PARAM;
-        case DRVSPI_STATUS_NOT_READY:
+        case DRV_STATUS_NOT_READY:
             return W25QXXX_PORT_STATUS_NOT_READY;
-        case DRVSPI_STATUS_BUSY:
+        case DRV_STATUS_BUSY:
             return W25QXXX_PORT_STATUS_BUSY;
-        case DRVSPI_STATUS_TIMEOUT:
+        case DRV_STATUS_TIMEOUT:
             return W25QXXX_PORT_STATUS_TIMEOUT;
-        case DRVSPI_STATUS_UNSUPPORTED:
+        case DRV_STATUS_UNSUPPORTED:
             return W25QXXX_PORT_STATUS_UNSUPPORTED;
         default:
             return W25QXXX_PORT_STATUS_ERROR;

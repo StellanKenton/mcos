@@ -1,5 +1,5 @@
-/************************************************************************************
-* @file     : system_port.h
+/***********************************************************************************
+* @file     : systask.h
 * @brief    : System task callback declarations.
 * @details  : Exposes task callback entry points used by the application startup.
 * @author   : GitHub Copilot
@@ -7,8 +7,8 @@
 * @version  : V1.0.0
 * @copyright: Copyright (c) 2050
 ***********************************************************************************/
-#ifndef SYSTEM_PORT_H
-#define SYSTEM_PORT_H
+#ifndef SYSTASK_H
+#define SYSTASK_H
 
 #include <stdint.h>
 #include "FreeRTOS.h"
@@ -58,5 +58,5 @@ void systemTaskCallback(void *parameter);
 #ifdef __cplusplus
 }
 #endif
-#endif  // SYSTEM_PORT_H
+#endif  // SYSTASK_H
 /**************************End of file********************************/

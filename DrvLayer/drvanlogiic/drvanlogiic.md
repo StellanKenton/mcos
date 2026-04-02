@@ -13,13 +13,19 @@ and bus recovery. Board-specific GPIO operations stay inside BSP files and are e
 - `drvanlogiic.c`: Software IIC core implementation with locking and recovery.
 - `drvanlogiic_port.h`: Logical bus identifiers and default timing macros.
 - `drvanlogiic_port.c`: Project binding table for logical bus and BSP hook mappings.
+- `bspanlogiic.h`: GD32F4 BSP hook declarations consumed by `drvanlogiic_port.c`.
 - `bspanlogiic.c`: GD32F4 BSP implementation for GPIO line control and microsecond delay.
+
+## Current Project Binding
+
+- `DRVANLOGIIC_BUS0` is bound in `drvanlogiic_port.c` to the `bspAnlogIic*` hook set.
+- `bspanlogiic.c` maps `DRVANLOGIIC_BUS0` to `GPIOD` `PD12` as SCL and `PD13` as SDA.
+- The current default half period is `10` us and the recovery clock count is `9`.
 
 ## Public API
 
 - `drvAnlogIicInit()`: Configure one logical bus and run a recovery sequence.
-- `drvAnlogIicRecoverBus()`: Manually release a stuck b
-us by toggling SCL and sending STOP.
+- `drvAnlogIicRecoverBus()`: Manually release a stuck bus by toggling SCL and sending STOP.
 - `drvAnlogIicTransfer()`: Generic combined write and read transaction with repeated start support.
 - `drvAnlogIicTransferTimeout()`: Timeout-compatible wrapper for interface alignment with `DrvIic`.
 - `drvAnlogIicWrite()`: Write raw payload to a 7-bit slave address.

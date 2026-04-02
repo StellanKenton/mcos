@@ -31,8 +31,8 @@ static eMpu6050DrvIicStatus mpu6050PortSoftIicReadRegAdpt(uint8_t bus, uint8_t a
 static eMpu6050DrvIicStatus mpu6050PortHardIicInitAdpt(uint8_t bus);
 static eMpu6050DrvIicStatus mpu6050PortHardIicWriteRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length);
 static eMpu6050DrvIicStatus mpu6050PortHardIicReadRegAdpt(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length);
-static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvIicStatus status);
-static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvAnlogIicStatus status);
+static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvStatus status);
+static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvStatus status);
 
 static const stMpu6050PortIicInterface gMpu6050PortIicInterfaces[MPU6050_PORT_IIC_TYPE_MAX] = {
     [MPU6050_PORT_IIC_TYPE_SOFTWARE] = {
@@ -215,47 +215,47 @@ static eMpu6050DrvIicStatus mpu6050PortHardIicReadRegAdpt(uint8_t bus, uint8_t a
     return mpu6050PortMapDrvIicStat(drvIicReadRegister((eDrvIicPortMap)bus, address, regBuf, regLen, buffer, length));
 }
 
-static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvIicStatus status)
+static eMpu6050DrvIicStatus mpu6050PortMapDrvIicStat(eDrvStatus status)
 {
     switch (status) {
-        case DRVIIC_STATUS_OK:
+        case DRV_STATUS_OK:
             return MPU6050_DRV_IIC_STATUS_OK;
-        case DRVIIC_STATUS_INVALID_PARAM:
+        case DRV_STATUS_INVALID_PARAM:
             return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
-        case DRVIIC_STATUS_NOT_READY:
+        case DRV_STATUS_NOT_READY:
             return MPU6050_DRV_IIC_STATUS_NOT_READY;
-        case DRVIIC_STATUS_BUSY:
+        case DRV_STATUS_BUSY:
             return MPU6050_DRV_IIC_STATUS_BUSY;
-        case DRVIIC_STATUS_TIMEOUT:
+        case DRV_STATUS_TIMEOUT:
             return MPU6050_DRV_IIC_STATUS_TIMEOUT;
-        case DRVIIC_STATUS_NACK:
+        case DRV_STATUS_NACK:
             return MPU6050_DRV_IIC_STATUS_NACK;
-        case DRVIIC_STATUS_UNSUPPORTED:
+        case DRV_STATUS_UNSUPPORTED:
             return MPU6050_DRV_IIC_STATUS_UNSUPPORTED;
-        case DRVIIC_STATUS_ERROR:
+        case DRV_STATUS_ERROR:
         default:
             return MPU6050_DRV_IIC_STATUS_ERROR;
     }
 }
 
-static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvAnlogIicStatus status)
+static eMpu6050DrvIicStatus mpu6050PortMapDrvAnlogIicStat(eDrvStatus status)
 {
     switch (status) {
-        case DRVANLOGIIC_STATUS_OK:
+        case DRV_STATUS_OK:
             return MPU6050_DRV_IIC_STATUS_OK;
-        case DRVANLOGIIC_STATUS_INVALID_PARAM:
+        case DRV_STATUS_INVALID_PARAM:
             return MPU6050_DRV_IIC_STATUS_INVALID_PARAM;
-        case DRVANLOGIIC_STATUS_NOT_READY:
+        case DRV_STATUS_NOT_READY:
             return MPU6050_DRV_IIC_STATUS_NOT_READY;
-        case DRVANLOGIIC_STATUS_BUSY:
+        case DRV_STATUS_BUSY:
             return MPU6050_DRV_IIC_STATUS_BUSY;
-        case DRVANLOGIIC_STATUS_TIMEOUT:
+        case DRV_STATUS_TIMEOUT:
             return MPU6050_DRV_IIC_STATUS_TIMEOUT;
-        case DRVANLOGIIC_STATUS_NACK:
+        case DRV_STATUS_NACK:
             return MPU6050_DRV_IIC_STATUS_NACK;
-        case DRVANLOGIIC_STATUS_UNSUPPORTED:
+        case DRV_STATUS_UNSUPPORTED:
             return MPU6050_DRV_IIC_STATUS_UNSUPPORTED;
-        case DRVANLOGIIC_STATUS_ERROR:
+        case DRV_STATUS_ERROR:
         default:
             return MPU6050_DRV_IIC_STATUS_ERROR;
     }

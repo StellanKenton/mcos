@@ -14,13 +14,13 @@
 - `drvspi_port.h`: Logical SPI bus identifiers and default timing macros.
 - `drvspi_port.c`: Default BSP binding and the per-bus custom CS GPIO configuration.
 - `bspspi.h`: GD32F4 BSP SPI entry points plus the reusable CS pin descriptor.
-- `bspspi.c`: SPI0 controller configuration, polling transfer implementation, and CS GPIO helpers.
+- `bspspi.c`: `SPI1`/`SPI0` controller configuration, polling transfer implementation, and CS GPIO helpers.
 
 ## Default Mapping
 
-- `DRVSPI_BUS0` uses `SPI0` on `PA5/PA6/PA7`.
-- Default custom CS uses `PA4` and is active low.
-- To change the CS pin, update the `gDrvSpiBus0CsPin` definition in `drvspi_port.c` or replace it at runtime with `drvSpiSetCsControl()`.
+- `DRVSPI_BUS0` uses `SPI1` on `PB10`/`PB14`/`PB15`, with default custom CS on `PE15` and active-low polarity.
+- `DRVSPI_BUS1` uses `SPI0` on `PA5`/`PA6`/`PA7`, with default custom CS on `PA4` and active-low polarity.
+- To change the CS pin, update the corresponding `gDrvSpiBus0CsPin` or `gDrvSpiBus1CsPin` definition in `drvspi_port.c`, or replace it at runtime with `drvSpiSetCsControl()`.
 
 ## Public API
 
@@ -30,6 +30,13 @@
 - `drvSpiWriteRead()`: Send a command or register prefix, then read data while keeping CS asserted.
 - `drvSpiExchange()`: Perform a same-length full-duplex transfer.
 - `drvSpiSetCsControl()`: Override the default CS hooks and bind a different custom pin strategy.
+
+## Current Behavior
+
+- The BSP transfer path is polling-based and returns `DRV_STATUS_TIMEOUT` or `DRV_STATUS_ERROR` when flag waits fail.
+- `drvspi_port.h` sets the default timeout to `100` ms when the caller passes `0`.
+- Read-only phases transmit `0xFF` as the default fill byte.
+- CS is driven manually by the `csControl` hook stored per logical bus.
 
 ## Verification Notes
 

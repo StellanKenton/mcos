@@ -11,6 +11,8 @@
 #define DRVUART_H
 
 #include <stdint.h>
+
+#include "rep_config.h"
 #include "drvuart_port.h"
 #include "ringbuffer.h"
 
@@ -20,21 +22,12 @@ extern "C" {
 
 #define DRVUART_BSP_SYNC_CHUNK_SIZE    256U
 
-typedef enum eDrvUartStatus {
-    DRVUART_STATUS_OK = 0,
-    DRVUART_STATUS_INVALID_PARAM,
-    DRVUART_STATUS_NOT_READY,
-    DRVUART_STATUS_BUSY,
-    DRVUART_STATUS_UNSUPPORTED,
-    DRVUART_STATUS_ERROR,
-} eDrvUartStatus;
-
-typedef eDrvUartStatus (*drvUartBspInitFunc)(eDrvUartPortMap uart);
-typedef eDrvUartStatus (*drvUartBspTransmitFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-typedef eDrvUartStatus (*drvUartBspTransmitItFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
-typedef eDrvUartStatus (*drvUartBspTransmitDmaFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*drvUartBspInitFunc)(eDrvUartPortMap uart);
+typedef eDrvStatus (*drvUartBspTransmitFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+typedef eDrvStatus (*drvUartBspTransmitItFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*drvUartBspTransmitDmaFunc)(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
 typedef uint16_t (*drvUartBspGetDataLenFunc)(eDrvUartPortMap uart);
-typedef eDrvUartStatus (*drvUartBspReceiveFunc)(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*drvUartBspReceiveFunc)(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
 
 typedef struct stDrvUartBspInterface {
     drvUartBspInitFunc init;
@@ -46,11 +39,11 @@ typedef struct stDrvUartBspInterface {
     uint8_t *Buffer;
 } stDrvUartBspInterface;
 
-eDrvUartStatus drvUartInit(eDrvUartPortMap uart);
-eDrvUartStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvUartStatus drvUartTransmitIt(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
-eDrvUartStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
-eDrvUartStatus drvUartReceive(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
+eDrvStatus drvUartInit(eDrvUartPortMap uart);
+eDrvStatus drvUartTransmit(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvUartTransmitIt(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvUartReceive(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
 uint16_t drvUartGetDataLen(eDrvUartPortMap uart);
 stRingBuffer* drvUartGetRingBuffer(eDrvUartPortMap uart);
 void drvUartLogInit(void);

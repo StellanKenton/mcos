@@ -13,22 +13,12 @@
 
 #include <stdint.h>
 
+#include "rep_config.h"
 #include "drviic_port.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef enum eDrvIicStatus {
-    DRVIIC_STATUS_OK = 0,
-    DRVIIC_STATUS_INVALID_PARAM,
-    DRVIIC_STATUS_NOT_READY,
-    DRVIIC_STATUS_BUSY,
-    DRVIIC_STATUS_TIMEOUT,
-    DRVIIC_STATUS_NACK,
-    DRVIIC_STATUS_UNSUPPORTED,
-    DRVIIC_STATUS_ERROR,
-} eDrvIicStatus;
 
 typedef struct stDrvIicTransfer {
     uint8_t address;
@@ -40,9 +30,9 @@ typedef struct stDrvIicTransfer {
     uint16_t secondWriteLength;
 } stDrvIicTransfer;
 
-typedef eDrvIicStatus (*drvIicBspInitFunc)(eDrvIicPortMap iic);
-typedef eDrvIicStatus (*drvIicBspTransferFunc)(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs);
-typedef eDrvIicStatus (*drvIicBspRecoverBusFunc)(eDrvIicPortMap iic);
+typedef eDrvStatus (*drvIicBspInitFunc)(eDrvIicPortMap iic);
+typedef eDrvStatus (*drvIicBspTransferFunc)(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs);
+typedef eDrvStatus (*drvIicBspRecoverBusFunc)(eDrvIicPortMap iic);
 
 typedef struct stDrvIicBspInterface {
     drvIicBspInitFunc init;
@@ -51,18 +41,18 @@ typedef struct stDrvIicBspInterface {
     uint32_t defaultTimeoutMs;
 } stDrvIicBspInterface;
 
-eDrvIicStatus drvIicInit(eDrvIicPortMap iic);
-eDrvIicStatus drvIicRecoverBus(eDrvIicPortMap iic);
-eDrvIicStatus drvIicTransfer(eDrvIicPortMap iic, const stDrvIicTransfer *transfer);
-eDrvIicStatus drvIicTransferTimeout(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs);
-eDrvIicStatus drvIicWrite(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length);
-eDrvIicStatus drvIicWriteTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvIicStatus drvIicRead(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length);
-eDrvIicStatus drvIicReadTimeout(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvIicStatus drvIicWriteRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
-eDrvIicStatus drvIicWriteRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
-eDrvIicStatus drvIicReadRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
-eDrvIicStatus drvIicReadRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvIicInit(eDrvIicPortMap iic);
+eDrvStatus drvIicRecoverBus(eDrvIicPortMap iic);
+eDrvStatus drvIicTransfer(eDrvIicPortMap iic, const stDrvIicTransfer *transfer);
+eDrvStatus drvIicTransferTimeout(eDrvIicPortMap iic, const stDrvIicTransfer *transfer, uint32_t timeoutMs);
+eDrvStatus drvIicWrite(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvIicWriteTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvIicRead(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length);
+eDrvStatus drvIicReadTimeout(eDrvIicPortMap iic, uint8_t address, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvIicWriteRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length);
+eDrvStatus drvIicWriteRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, const uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
+eDrvStatus drvIicReadRegister(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length);
+eDrvStatus drvIicReadRegisterTimeout(eDrvIicPortMap iic, uint8_t address, const uint8_t *registerBuffer, uint16_t registerLength, uint8_t *buffer, uint16_t length, uint32_t timeoutMs);
 
 #ifdef __cplusplus
 }
