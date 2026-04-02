@@ -1,10 +1,12 @@
 /************************************************************************************
 * @file     : w25qxxx.c
-* @brief    : Reusable W25Qxxx SPI NOR flash module implementation.
-* @details  : This file contains parameter validation, JEDEC ID probing, busy
-*             polling, paged writes, and erase helpers using the port hooks.
+* @brief    : W25Qxxx SPI NOR flash module implementation.
+* @details  : This file manages logical device instances, JEDEC probing, busy
+*             polling, paged programming, and erase flows through port hooks.
 ***********************************************************************************/
 #include "w25qxxx.h"
+
+#include "w25qxxx_port.h"
 
 #include <stddef.h>
 
@@ -24,14 +26,490 @@
 #define W25QXXX_STATUS1_BUSY_MASK            0x01U
 #define W25QXXX_STATUS1_WEL_MASK             0x02U
 
-static bool w25qxxxIsValidDevice(const stW25qxxxDevice *device)
+static stW25qxxxDevice gW25qxxxDevices[W25QXXX_DEV_MAX];
+static bool gW25qxxxDefCfgDone[W25QXXX_DEV_MAX] = {false};
+
+static bool w25qxxxIsValidDevMap(eW25qxxxMapType device);
+static stW25qxxxDevice *w25qxxxGetDevCtx(eW25qxxxMapType device);
+static void w25qxxxLoadDefCfg(eW25qxxxMapType device, stW25qxxxCfg *cfg);
+static void w25qxxxClrInfo(stW25qxxxInfo *info);
+static bool w25qxxxIsValidDev(const stW25qxxxDevice *device);
+static bool w25qxxxIsReadyXfer(const stW25qxxxDevice *device);
+static bool w25qxxxIsValidCapacityId(uint8_t capacityId);
+static bool w25qxxxIsRangeValid(const stW25qxxxDevice *device, uint32_t address, uint32_t length);
+static void w25qxxxFillInfo(stW25qxxxInfo *info);
+static eW25qxxxStatus w25qxxxMapPortStatus(eDrvStatus status);
+static const stW25qxxxPortSpiInterface *w25qxxxGetSpiIf(const stW25qxxxDevice *device);
+static eW25qxxxStatus w25qxxxTransferInt(const stW25qxxxDevice *device, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength);
+static void w25qxxxBuildAddrCmd(uint8_t *header, uint8_t command, uint32_t address, uint8_t addressWidth);
+static eW25qxxxStatus w25qxxxReadStatus1Int(const stW25qxxxDevice *device, uint8_t *statusValue);
+static eW25qxxxStatus w25qxxxReadJedecIdInt(const stW25qxxxDevice *device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId);
+static eW25qxxxStatus w25qxxxWriteEnInt(const stW25qxxxDevice *device);
+static eW25qxxxStatus w25qxxxWaitReadyInt(const stW25qxxxDevice *device, uint32_t timeoutMs);
+static uint8_t w25qxxxGetReadCmd(const stW25qxxxDevice *device);
+static uint8_t w25qxxxGetProgCmd(const stW25qxxxDevice *device);
+static uint8_t w25qxxxGetSectEraseCmd(const stW25qxxxDevice *device);
+static uint8_t w25qxxxGetBlkEraseCmd(const stW25qxxxDevice *device);
+
+eW25qxxxStatus w25qxxxGetDefCfg(eW25qxxxMapType device)
 {
-    return (device != NULL) && w25qxxxPortIsValidBinding(&device->binding);
+    stW25qxxxDevice *lDeviceCtx;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (lDeviceCtx == NULL) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    w25qxxxLoadDefCfg(device, &lDeviceCtx->cfg);
+    w25qxxxClrInfo(&lDeviceCtx->info);
+    lDeviceCtx->isReady = false;
+    gW25qxxxDefCfgDone[device] = true;
+    return W25QXXX_STATUS_OK;
 }
 
-static bool w25qxxxIsReadyForAccess(const stW25qxxxDevice *device)
+eW25qxxxStatus w25qxxxGetCfg(eW25qxxxMapType device, stW25qxxxCfg *cfg)
 {
-    return w25qxxxIsValidDevice(device) && device->isReady;
+    stW25qxxxDevice *lDeviceCtx;
+
+    if (cfg == NULL) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (lDeviceCtx == NULL) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    *cfg = lDeviceCtx->cfg;
+    return W25QXXX_STATUS_OK;
+}
+
+eW25qxxxStatus w25qxxxSetCfg(eW25qxxxMapType device, const stW25qxxxCfg *cfg)
+{
+    stW25qxxxDevice *lDeviceCtx;
+
+    if ((cfg == NULL) || !w25qxxxPortIsValidBind(&cfg->spiBind)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (lDeviceCtx == NULL) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lDeviceCtx->cfg = *cfg;
+    w25qxxxClrInfo(&lDeviceCtx->info);
+    lDeviceCtx->isReady = false;
+    gW25qxxxDefCfgDone[device] = true;
+    return W25QXXX_STATUS_OK;
+}
+
+eW25qxxxStatus w25qxxxInit(eW25qxxxMapType device)
+{
+    const stW25qxxxPortSpiInterface *lSpiIf;
+    stW25qxxxDevice *lDeviceCtx;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsValidDev(lDeviceCtx)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    if (!w25qxxxPortHasValidSpiIf(&lDeviceCtx->cfg.spiBind)) {
+        return w25qxxxPortIsValidBind(&lDeviceCtx->cfg.spiBind) ?
+               W25QXXX_STATUS_NOT_READY :
+               W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lSpiIf = w25qxxxPortGetSpiIf(&lDeviceCtx->cfg.spiBind);
+    lStatus = w25qxxxMapPortStatus(lSpiIf->init(lDeviceCtx->cfg.spiBind.bus));
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    lDeviceCtx->isReady = false;
+    w25qxxxClrInfo(&lDeviceCtx->info);
+
+    lStatus = w25qxxxReadJedecIdInt(lDeviceCtx,
+                                    &lDeviceCtx->info.manufacturerId,
+                                    &lDeviceCtx->info.memoryType,
+                                    &lDeviceCtx->info.capacityId);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    if (lDeviceCtx->info.manufacturerId != W25QXXX_MANUFACTURER_ID) {
+        return W25QXXX_STATUS_DEVICE_ID_MISMATCH;
+    }
+
+    if (!w25qxxxIsValidCapacityId(lDeviceCtx->info.capacityId)) {
+        return W25QXXX_STATUS_UNSUPPORTED;
+    }
+
+    w25qxxxFillInfo(&lDeviceCtx->info);
+    lDeviceCtx->isReady = true;
+    return W25QXXX_STATUS_OK;
+}
+
+bool w25qxxxIsReady(eW25qxxxMapType device)
+{
+    return w25qxxxIsReadyXfer(w25qxxxGetDevCtx(device));
+}
+
+const stW25qxxxInfo *w25qxxxGetInfo(eW25qxxxMapType device)
+{
+    stW25qxxxDevice *lDeviceCtx;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return NULL;
+    }
+
+    return &lDeviceCtx->info;
+}
+
+eW25qxxxStatus w25qxxxReadJedecId(eW25qxxxMapType device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId)
+{
+    const stW25qxxxPortSpiInterface *lSpiIf;
+    stW25qxxxDevice *lDeviceCtx;
+    eW25qxxxStatus lStatus;
+
+    if ((manufacturerId == NULL) || (memoryType == NULL) || (capacityId == NULL)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsValidDev(lDeviceCtx)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    lSpiIf = w25qxxxPortGetSpiIf(&lDeviceCtx->cfg.spiBind);
+    if (lSpiIf == NULL) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    lStatus = w25qxxxMapPortStatus(lSpiIf->init(lDeviceCtx->cfg.spiBind.bus));
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    return w25qxxxReadJedecIdInt(lDeviceCtx, manufacturerId, memoryType, capacityId);
+}
+
+eW25qxxxStatus w25qxxxReadStatus1(eW25qxxxMapType device, uint8_t *statusValue)
+{
+    stW25qxxxDevice *lDeviceCtx;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    return w25qxxxReadStatus1Int(lDeviceCtx, statusValue);
+}
+
+eW25qxxxStatus w25qxxxWaitReady(eW25qxxxMapType device, uint32_t timeoutMs)
+{
+    stW25qxxxDevice *lDeviceCtx;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    return w25qxxxWaitReadyInt(lDeviceCtx, timeoutMs);
+}
+
+eW25qxxxStatus w25qxxxRead(eW25qxxxMapType device, uint32_t address, uint8_t *buffer, uint32_t length)
+{
+    stW25qxxxDevice *lDeviceCtx;
+    uint8_t lHeader[5];
+    uint32_t lOffset;
+    uint32_t lChunkLength;
+    uint8_t lHeaderLength;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    if ((buffer == NULL) && (length > 0U)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    if (length == 0U) {
+        return W25QXXX_STATUS_OK;
+    }
+
+    if (!w25qxxxIsRangeValid(lDeviceCtx, address, length)) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    lHeaderLength = (lDeviceCtx->info.addressWidth == 4U) ? 5U : 4U;
+    lOffset = 0U;
+    while (lOffset < length) {
+        lChunkLength = length - lOffset;
+        if (lChunkLength > W25QXXX_MAX_TRANSFER_LENGTH) {
+            lChunkLength = W25QXXX_MAX_TRANSFER_LENGTH;
+        }
+
+        w25qxxxBuildAddrCmd(lHeader, w25qxxxGetReadCmd(lDeviceCtx), address + lOffset, lDeviceCtx->info.addressWidth);
+        lStatus = w25qxxxTransferInt(lDeviceCtx, lHeader, lHeaderLength, NULL, 0U, &buffer[lOffset], (uint16_t)lChunkLength);
+        if (lStatus != W25QXXX_STATUS_OK) {
+            return lStatus;
+        }
+
+        lOffset += lChunkLength;
+    }
+
+    return W25QXXX_STATUS_OK;
+}
+
+eW25qxxxStatus w25qxxxWrite(eW25qxxxMapType device, uint32_t address, const uint8_t *buffer, uint32_t length)
+{
+    stW25qxxxDevice *lDeviceCtx;
+    uint8_t lHeader[5];
+    uint32_t lOffset;
+    uint32_t lChunkLength;
+    uint32_t lPageOffset;
+    uint32_t lPageRemain;
+    uint8_t lHeaderLength;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    if ((buffer == NULL) && (length > 0U)) {
+        return W25QXXX_STATUS_INVALID_PARAM;
+    }
+
+    if (length == 0U) {
+        return W25QXXX_STATUS_OK;
+    }
+
+    if (!w25qxxxIsRangeValid(lDeviceCtx, address, length)) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    lHeaderLength = (lDeviceCtx->info.addressWidth == 4U) ? 5U : 4U;
+    lOffset = 0U;
+    while (lOffset < length) {
+        lPageOffset = (address + lOffset) % lDeviceCtx->info.pageSizeBytes;
+        lPageRemain = lDeviceCtx->info.pageSizeBytes - lPageOffset;
+        lChunkLength = length - lOffset;
+        if (lChunkLength > lPageRemain) {
+            lChunkLength = lPageRemain;
+        }
+
+        lStatus = w25qxxxWriteEnInt(lDeviceCtx);
+        if (lStatus != W25QXXX_STATUS_OK) {
+            return lStatus;
+        }
+
+        w25qxxxBuildAddrCmd(lHeader, w25qxxxGetProgCmd(lDeviceCtx), address + lOffset, lDeviceCtx->info.addressWidth);
+        lStatus = w25qxxxTransferInt(lDeviceCtx, lHeader, lHeaderLength, &buffer[lOffset], (uint16_t)lChunkLength, NULL, 0U);
+        if (lStatus != W25QXXX_STATUS_OK) {
+            return lStatus;
+        }
+
+        lStatus = w25qxxxWaitReadyInt(lDeviceCtx, W25QXXX_PAGE_PROGRAM_TIMEOUT_MS);
+        if (lStatus != W25QXXX_STATUS_OK) {
+            return lStatus;
+        }
+
+        lOffset += lChunkLength;
+    }
+
+    return W25QXXX_STATUS_OK;
+}
+
+eW25qxxxStatus w25qxxxEraseSector(eW25qxxxMapType device, uint32_t address)
+{
+    stW25qxxxDevice *lDeviceCtx;
+    uint8_t lHeader[5];
+    uint8_t lHeaderLength;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    if ((address % lDeviceCtx->info.sectorSizeBytes) != 0U) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    if (!w25qxxxIsRangeValid(lDeviceCtx, address, lDeviceCtx->info.sectorSizeBytes)) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    lStatus = w25qxxxWriteEnInt(lDeviceCtx);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    lHeaderLength = (lDeviceCtx->info.addressWidth == 4U) ? 5U : 4U;
+    w25qxxxBuildAddrCmd(lHeader, w25qxxxGetSectEraseCmd(lDeviceCtx), address, lDeviceCtx->info.addressWidth);
+    lStatus = w25qxxxTransferInt(lDeviceCtx, lHeader, lHeaderLength, NULL, 0U, NULL, 0U);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    return w25qxxxWaitReadyInt(lDeviceCtx, W25QXXX_SECTOR_ERASE_TIMEOUT_MS);
+}
+
+eW25qxxxStatus w25qxxxEraseBlock64k(eW25qxxxMapType device, uint32_t address)
+{
+    stW25qxxxDevice *lDeviceCtx;
+    uint8_t lHeader[5];
+    uint8_t lHeaderLength;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    if ((address % lDeviceCtx->info.blockSizeBytes) != 0U) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    if (!w25qxxxIsRangeValid(lDeviceCtx, address, lDeviceCtx->info.blockSizeBytes)) {
+        return W25QXXX_STATUS_OUT_OF_RANGE;
+    }
+
+    lStatus = w25qxxxWriteEnInt(lDeviceCtx);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    lHeaderLength = (lDeviceCtx->info.addressWidth == 4U) ? 5U : 4U;
+    w25qxxxBuildAddrCmd(lHeader, w25qxxxGetBlkEraseCmd(lDeviceCtx), address, lDeviceCtx->info.addressWidth);
+    lStatus = w25qxxxTransferInt(lDeviceCtx, lHeader, lHeaderLength, NULL, 0U, NULL, 0U);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    return w25qxxxWaitReadyInt(lDeviceCtx, W25QXXX_BLOCK_ERASE_TIMEOUT_MS);
+}
+
+eW25qxxxStatus w25qxxxEraseChip(eW25qxxxMapType device)
+{
+    stW25qxxxDevice *lDeviceCtx;
+    uint8_t lCommand;
+    eW25qxxxStatus lStatus;
+
+    lDeviceCtx = w25qxxxGetDevCtx(device);
+    if (!w25qxxxIsReadyXfer(lDeviceCtx)) {
+        return W25QXXX_STATUS_NOT_READY;
+    }
+
+    lStatus = w25qxxxWriteEnInt(lDeviceCtx);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    lCommand = W25QXXX_CMD_CHIP_ERASE;
+    lStatus = w25qxxxTransferInt(lDeviceCtx, &lCommand, 1U, NULL, 0U, NULL, 0U);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return lStatus;
+    }
+
+    return w25qxxxWaitReadyInt(lDeviceCtx, W25QXXX_CHIP_ERASE_TIMEOUT_MS);
+}
+
+static bool w25qxxxIsValidDevMap(eW25qxxxMapType device)
+{
+    return ((uint32_t)device < (uint32_t)W25QXXX_DEV_MAX);
+}
+
+static stW25qxxxDevice *w25qxxxGetDevCtx(eW25qxxxMapType device)
+{
+    if (!w25qxxxIsValidDevMap(device)) {
+        return NULL;
+    }
+
+    if (!gW25qxxxDefCfgDone[device]) {
+        w25qxxxLoadDefCfg(device, &gW25qxxxDevices[device].cfg);
+        w25qxxxClrInfo(&gW25qxxxDevices[device].info);
+        gW25qxxxDevices[device].isReady = false;
+        gW25qxxxDefCfgDone[device] = true;
+    }
+
+    return &gW25qxxxDevices[device];
+}
+
+static void w25qxxxLoadDefCfg(eW25qxxxMapType device, stW25qxxxCfg *cfg)
+{
+    if (cfg == NULL) {
+        return;
+    }
+
+    w25qxxxPortGetDefCfg(device, cfg);
+}
+
+static void w25qxxxClrInfo(stW25qxxxInfo *info)
+{
+    if (info == NULL) {
+        return;
+    }
+
+    info->manufacturerId = 0U;
+    info->memoryType = 0U;
+    info->capacityId = 0U;
+    info->addressWidth = 0U;
+    info->pageSizeBytes = 0U;
+    info->totalSizeBytes = 0U;
+    info->sectorSizeBytes = 0U;
+    info->blockSizeBytes = 0U;
+}
+
+static bool w25qxxxIsValidDev(const stW25qxxxDevice *device)
+{
+    return (device != NULL) && w25qxxxPortIsValidBind(&device->cfg.spiBind);
+}
+
+static bool w25qxxxIsReadyXfer(const stW25qxxxDevice *device)
+{
+    return w25qxxxIsValidDev(device) && device->isReady;
+}
+
+static bool w25qxxxIsValidCapacityId(uint8_t capacityId)
+{
+    return (capacityId >= 0x10U) && (capacityId < 32U);
+}
+
+static bool w25qxxxIsRangeValid(const stW25qxxxDevice *device, uint32_t address, uint32_t length)
+{
+    if (!w25qxxxIsReadyXfer(device)) {
+        return false;
+    }
+
+    if (length == 0U) {
+        return address <= device->info.totalSizeBytes;
+    }
+
+    if (address >= device->info.totalSizeBytes) {
+        return false;
+    }
+
+    return length <= (device->info.totalSizeBytes - address);
+}
+
+static void w25qxxxFillInfo(stW25qxxxInfo *info)
+{
+    if (info == NULL) {
+        return;
+    }
+
+    info->totalSizeBytes = (uint32_t)(1UL << info->capacityId);
+    info->pageSizeBytes = W25QXXX_PAGE_SIZE;
+    info->sectorSizeBytes = W25QXXX_SECTOR_SIZE;
+    info->blockSizeBytes = W25QXXX_BLOCK64K_SIZE;
+    info->addressWidth = (info->totalSizeBytes > 0x01000000UL) ? 4U : 3U;
 }
 
 static eW25qxxxStatus w25qxxxMapPortStatus(eDrvStatus status)
@@ -52,35 +530,35 @@ static eW25qxxxStatus w25qxxxMapPortStatus(eDrvStatus status)
     }
 }
 
-static const stW25qxxxPortInterface *w25qxxxGetPortInterface(const stW25qxxxDevice *device)
+static const stW25qxxxPortSpiInterface *w25qxxxGetSpiIf(const stW25qxxxDevice *device)
 {
-    if (!w25qxxxIsValidDevice(device)) {
+    if (!w25qxxxIsValidDev(device)) {
         return NULL;
     }
 
-    return w25qxxxPortGetInterface(&device->binding);
+    return w25qxxxPortGetSpiIf(&device->cfg.spiBind);
 }
 
-static eW25qxxxStatus w25qxxxTransferInternal(const stW25qxxxDevice *device, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength)
+static eW25qxxxStatus w25qxxxTransferInt(const stW25qxxxDevice *device, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength)
 {
-    const stW25qxxxPortInterface *lPortInterface;
+    const stW25qxxxPortSpiInterface *lSpiIf;
 
-    lPortInterface = w25qxxxGetPortInterface(device);
-    if ((lPortInterface == NULL) || (lPortInterface->transfer == NULL)) {
+    lSpiIf = w25qxxxGetSpiIf(device);
+    if ((lSpiIf == NULL) || (lSpiIf->transfer == NULL)) {
         return W25QXXX_STATUS_NOT_READY;
     }
 
-    return w25qxxxMapPortStatus(lPortInterface->transfer(&device->binding,
-                                                         writeBuffer,
-                                                         writeLength,
-                                                         secondWriteBuffer,
-                                                         secondWriteLength,
-                                                         readBuffer,
-                                                         readLength,
-                                                         W25QXXX_PORT_READ_FILL_DATA));
+    return w25qxxxMapPortStatus(lSpiIf->transfer(device->cfg.spiBind.bus,
+                                                  writeBuffer,
+                                                  writeLength,
+                                                  secondWriteBuffer,
+                                                  secondWriteLength,
+                                                  readBuffer,
+                                                  readLength,
+                                                  W25QXXX_PORT_READ_FILL_DATA));
 }
 
-static void w25qxxxBuildAddressCommand(uint8_t *header, uint8_t command, uint32_t address, uint8_t addressWidth)
+static void w25qxxxBuildAddrCmd(uint8_t *header, uint8_t command, uint32_t address, uint8_t addressWidth)
 {
     header[0] = command;
     if (addressWidth == 4U) {
@@ -95,29 +573,7 @@ static void w25qxxxBuildAddressCommand(uint8_t *header, uint8_t command, uint32_
     }
 }
 
-static bool w25qxxxIsValidCapacityId(uint8_t capacityId)
-{
-    return (capacityId >= 0x10U) && (capacityId < 32U);
-}
-
-static bool w25qxxxIsRangeValid(const stW25qxxxDevice *device, uint32_t address, uint32_t length)
-{
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return false;
-    }
-
-    if (length == 0U) {
-        return address <= device->info.totalSizeBytes;
-    }
-
-    if (address >= device->info.totalSizeBytes) {
-        return false;
-    }
-
-    return length <= (device->info.totalSizeBytes - address);
-}
-
-static eW25qxxxStatus w25qxxxReadStatus1Internal(const stW25qxxxDevice *device, uint8_t *statusValue)
+static eW25qxxxStatus w25qxxxReadStatus1Int(const stW25qxxxDevice *device, uint8_t *statusValue)
 {
     uint8_t lCommand;
 
@@ -126,10 +582,10 @@ static eW25qxxxStatus w25qxxxReadStatus1Internal(const stW25qxxxDevice *device, 
     }
 
     lCommand = W25QXXX_CMD_READ_STATUS1;
-    return w25qxxxTransferInternal(device, &lCommand, 1U, NULL, 0U, statusValue, 1U);
+    return w25qxxxTransferInt(device, &lCommand, 1U, NULL, 0U, statusValue, 1U);
 }
 
-static eW25qxxxStatus w25qxxxReadJedecIdInternal(const stW25qxxxDevice *device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId)
+static eW25qxxxStatus w25qxxxReadJedecIdInt(const stW25qxxxDevice *device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId)
 {
     uint8_t lCommand;
     uint8_t lJedecId[3];
@@ -140,7 +596,7 @@ static eW25qxxxStatus w25qxxxReadJedecIdInternal(const stW25qxxxDevice *device, 
     }
 
     lCommand = W25QXXX_CMD_JEDEC_ID;
-    lStatus = w25qxxxTransferInternal(device, &lCommand, 1U, NULL, 0U, lJedecId, 3U);
+    lStatus = w25qxxxTransferInt(device, &lCommand, 1U, NULL, 0U, lJedecId, 3U);
     if (lStatus != W25QXXX_STATUS_OK) {
         return lStatus;
     }
@@ -151,7 +607,7 @@ static eW25qxxxStatus w25qxxxReadJedecIdInternal(const stW25qxxxDevice *device, 
     return W25QXXX_STATUS_OK;
 }
 
-static eW25qxxxStatus w25qxxxWriteEnableInternal(const stW25qxxxDevice *device)
+static eW25qxxxStatus w25qxxxWriteEnInt(const stW25qxxxDevice *device)
 {
     uint8_t lCommand;
     uint8_t lStatusValue;
@@ -162,12 +618,12 @@ static eW25qxxxStatus w25qxxxWriteEnableInternal(const stW25qxxxDevice *device)
     }
 
     lCommand = W25QXXX_CMD_WRITE_ENABLE;
-    lStatus = w25qxxxTransferInternal(device, &lCommand, 1U, NULL, 0U, NULL, 0U);
+    lStatus = w25qxxxTransferInt(device, &lCommand, 1U, NULL, 0U, NULL, 0U);
     if (lStatus != W25QXXX_STATUS_OK) {
         return lStatus;
     }
 
-    lStatus = w25qxxxReadStatus1Internal(device, &lStatusValue);
+    lStatus = w25qxxxReadStatus1Int(device, &lStatusValue);
     if (lStatus != W25QXXX_STATUS_OK) {
         return lStatus;
     }
@@ -179,9 +635,8 @@ static eW25qxxxStatus w25qxxxWriteEnableInternal(const stW25qxxxDevice *device)
     return W25QXXX_STATUS_OK;
 }
 
-static eW25qxxxStatus w25qxxxWaitReadyInternal(const stW25qxxxDevice *device, uint32_t timeoutMs)
+static eW25qxxxStatus w25qxxxWaitReadyInt(const stW25qxxxDevice *device, uint32_t timeoutMs)
 {
-    const stW25qxxxPortInterface *lPortInterface;
     uint8_t lStatusValue;
     uint32_t lElapsedMs;
     eW25qxxxStatus lStatus;
@@ -190,14 +645,9 @@ static eW25qxxxStatus w25qxxxWaitReadyInternal(const stW25qxxxDevice *device, ui
         return W25QXXX_STATUS_INVALID_PARAM;
     }
 
-    lPortInterface = w25qxxxGetPortInterface(device);
-    if ((lPortInterface == NULL) || (lPortInterface->delayMs == NULL)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
     lElapsedMs = 0U;
     while (true) {
-        lStatus = w25qxxxReadStatus1Internal(device, &lStatusValue);
+        lStatus = w25qxxxReadStatus1Int(device, &lStatusValue);
         if (lStatus != W25QXXX_STATUS_OK) {
             return lStatus;
         }
@@ -210,321 +660,28 @@ static eW25qxxxStatus w25qxxxWaitReadyInternal(const stW25qxxxDevice *device, ui
             return W25QXXX_STATUS_TIMEOUT;
         }
 
-        lPortInterface->delayMs(W25QXXX_BUSY_POLL_DELAY_MS);
+        w25qxxxPortDelayMs(W25QXXX_BUSY_POLL_DELAY_MS);
         lElapsedMs += W25QXXX_BUSY_POLL_DELAY_MS;
     }
 }
 
-static uint8_t w25qxxxGetReadCommand(const stW25qxxxDevice *device)
+static uint8_t w25qxxxGetReadCmd(const stW25qxxxDevice *device)
 {
     return (device->info.addressWidth == 4U) ? W25QXXX_CMD_READ_DATA_4B : W25QXXX_CMD_READ_DATA;
 }
 
-static uint8_t w25qxxxGetProgramCommand(const stW25qxxxDevice *device)
+static uint8_t w25qxxxGetProgCmd(const stW25qxxxDevice *device)
 {
     return (device->info.addressWidth == 4U) ? W25QXXX_CMD_PAGE_PROGRAM_4B : W25QXXX_CMD_PAGE_PROGRAM;
 }
 
-static uint8_t w25qxxxGetSectorEraseCommand(const stW25qxxxDevice *device)
+static uint8_t w25qxxxGetSectEraseCmd(const stW25qxxxDevice *device)
 {
     return (device->info.addressWidth == 4U) ? W25QXXX_CMD_SECTOR_ERASE_4B : W25QXXX_CMD_SECTOR_ERASE;
 }
 
-static uint8_t w25qxxxGetBlockEraseCommand(const stW25qxxxDevice *device)
+static uint8_t w25qxxxGetBlkEraseCmd(const stW25qxxxDevice *device)
 {
     return (device->info.addressWidth == 4U) ? W25QXXX_CMD_BLOCK_ERASE_64K_4B : W25QXXX_CMD_BLOCK_ERASE_64K;
-}
-
-void w25qxxxGetDefaultConfig(stW25qxxxDevice *device)
-{
-    if (device == NULL) {
-        return;
-    }
-
-    device->binding = w25qxxxPortGetDefaultBinding();
-    device->info.manufacturerId = 0U;
-    device->info.memoryType = 0U;
-    device->info.capacityId = 0U;
-    device->info.addressWidth = 3U;
-    device->info.pageSizeBytes = W25QXXX_PAGE_SIZE;
-    device->info.totalSizeBytes = 0U;
-    device->info.sectorSizeBytes = W25QXXX_SECTOR_SIZE;
-    device->info.blockSizeBytes = W25QXXX_BLOCK64K_SIZE;
-    device->isReady = false;
-}
-
-eW25qxxxStatus w25qxxxInit(stW25qxxxDevice *device)
-{
-    const stW25qxxxPortInterface *lPortInterface;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsValidDevice(device)) {
-        return W25QXXX_STATUS_INVALID_PARAM;
-    }
-
-    lPortInterface = w25qxxxGetPortInterface(device);
-    if ((lPortInterface == NULL) || (lPortInterface->init == NULL)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    device->isReady = false;
-
-    lStatus = w25qxxxMapPortStatus(lPortInterface->init(&device->binding));
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    lStatus = w25qxxxReadJedecIdInternal(device, &device->info.manufacturerId, &device->info.memoryType, &device->info.capacityId);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    if (device->info.manufacturerId != W25QXXX_MANUFACTURER_ID) {
-        return W25QXXX_STATUS_DEVICE_ID_MISMATCH;
-    }
-
-    if (!w25qxxxIsValidCapacityId(device->info.capacityId)) {
-        return W25QXXX_STATUS_UNSUPPORTED;
-    }
-
-    device->info.totalSizeBytes = (uint32_t)(1UL << device->info.capacityId);
-    device->info.pageSizeBytes = W25QXXX_PAGE_SIZE;
-    device->info.sectorSizeBytes = W25QXXX_SECTOR_SIZE;
-    device->info.blockSizeBytes = W25QXXX_BLOCK64K_SIZE;
-    device->info.addressWidth = (device->info.totalSizeBytes > 0x01000000UL) ? 4U : 3U;
-    device->isReady = true;
-    return W25QXXX_STATUS_OK;
-}
-
-bool w25qxxxIsReady(const stW25qxxxDevice *device)
-{
-    return w25qxxxIsReadyForAccess(device);
-}
-
-const stW25qxxxInfo *w25qxxxGetInfo(const stW25qxxxDevice *device)
-{
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return NULL;
-    }
-
-    return &device->info;
-}
-
-eW25qxxxStatus w25qxxxReadJedecId(stW25qxxxDevice *device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId)
-{
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    return w25qxxxReadJedecIdInternal(device, manufacturerId, memoryType, capacityId);
-}
-
-eW25qxxxStatus w25qxxxReadStatus1(stW25qxxxDevice *device, uint8_t *statusValue)
-{
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    return w25qxxxReadStatus1Internal(device, statusValue);
-}
-
-eW25qxxxStatus w25qxxxWaitReady(stW25qxxxDevice *device, uint32_t timeoutMs)
-{
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    return w25qxxxWaitReadyInternal(device, timeoutMs);
-}
-
-eW25qxxxStatus w25qxxxRead(stW25qxxxDevice *device, uint32_t address, uint8_t *buffer, uint32_t length)
-{
-    uint8_t lHeader[5];
-    uint32_t lOffset;
-    uint32_t lChunkLength;
-    uint8_t lHeaderLength;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    if ((buffer == NULL) && (length > 0U)) {
-        return W25QXXX_STATUS_INVALID_PARAM;
-    }
-
-    if (length == 0U) {
-        return W25QXXX_STATUS_OK;
-    }
-
-    if (!w25qxxxIsRangeValid(device, address, length)) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    lHeaderLength = (device->info.addressWidth == 4U) ? 5U : 4U;
-    lOffset = 0U;
-    while (lOffset < length) {
-        lChunkLength = length - lOffset;
-        if (lChunkLength > W25QXXX_MAX_TRANSFER_LENGTH) {
-            lChunkLength = W25QXXX_MAX_TRANSFER_LENGTH;
-        }
-
-        w25qxxxBuildAddressCommand(lHeader, w25qxxxGetReadCommand(device), address + lOffset, device->info.addressWidth);
-        lStatus = w25qxxxTransferInternal(device, lHeader, lHeaderLength, NULL, 0U, &buffer[lOffset], (uint16_t)lChunkLength);
-        if (lStatus != W25QXXX_STATUS_OK) {
-            return lStatus;
-        }
-
-        lOffset += lChunkLength;
-    }
-
-    return W25QXXX_STATUS_OK;
-}
-
-eW25qxxxStatus w25qxxxWrite(stW25qxxxDevice *device, uint32_t address, const uint8_t *buffer, uint32_t length)
-{
-    uint8_t lHeader[5];
-    uint32_t lOffset;
-    uint32_t lChunkLength;
-    uint32_t lPageOffset;
-    uint32_t lPageRemain;
-    uint8_t lHeaderLength;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    if ((buffer == NULL) && (length > 0U)) {
-        return W25QXXX_STATUS_INVALID_PARAM;
-    }
-
-    if (length == 0U) {
-        return W25QXXX_STATUS_OK;
-    }
-
-    if (!w25qxxxIsRangeValid(device, address, length)) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    lHeaderLength = (device->info.addressWidth == 4U) ? 5U : 4U;
-    lOffset = 0U;
-    while (lOffset < length) {
-        lPageOffset = (address + lOffset) % device->info.pageSizeBytes;
-        lPageRemain = device->info.pageSizeBytes - lPageOffset;
-        lChunkLength = length - lOffset;
-        if (lChunkLength > lPageRemain) {
-            lChunkLength = lPageRemain;
-        }
-
-        lStatus = w25qxxxWriteEnableInternal(device);
-        if (lStatus != W25QXXX_STATUS_OK) {
-            return lStatus;
-        }
-
-        w25qxxxBuildAddressCommand(lHeader, w25qxxxGetProgramCommand(device), address + lOffset, device->info.addressWidth);
-        lStatus = w25qxxxTransferInternal(device, lHeader, lHeaderLength, &buffer[lOffset], (uint16_t)lChunkLength, NULL, 0U);
-        if (lStatus != W25QXXX_STATUS_OK) {
-            return lStatus;
-        }
-
-        lStatus = w25qxxxWaitReadyInternal(device, W25QXXX_PAGE_PROGRAM_TIMEOUT_MS);
-        if (lStatus != W25QXXX_STATUS_OK) {
-            return lStatus;
-        }
-
-        lOffset += lChunkLength;
-    }
-
-    return W25QXXX_STATUS_OK;
-}
-
-eW25qxxxStatus w25qxxxEraseSector(stW25qxxxDevice *device, uint32_t address)
-{
-    uint8_t lHeader[5];
-    uint8_t lHeaderLength;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    if ((address % device->info.sectorSizeBytes) != 0U) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    if (!w25qxxxIsRangeValid(device, address, device->info.sectorSizeBytes)) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    lStatus = w25qxxxWriteEnableInternal(device);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    lHeaderLength = (device->info.addressWidth == 4U) ? 5U : 4U;
-    w25qxxxBuildAddressCommand(lHeader, w25qxxxGetSectorEraseCommand(device), address, device->info.addressWidth);
-    lStatus = w25qxxxTransferInternal(device, lHeader, lHeaderLength, NULL, 0U, NULL, 0U);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    return w25qxxxWaitReadyInternal(device, W25QXXX_SECTOR_ERASE_TIMEOUT_MS);
-}
-
-eW25qxxxStatus w25qxxxEraseBlock64k(stW25qxxxDevice *device, uint32_t address)
-{
-    uint8_t lHeader[5];
-    uint8_t lHeaderLength;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    if ((address % device->info.blockSizeBytes) != 0U) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    if (!w25qxxxIsRangeValid(device, address, device->info.blockSizeBytes)) {
-        return W25QXXX_STATUS_OUT_OF_RANGE;
-    }
-
-    lStatus = w25qxxxWriteEnableInternal(device);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    lHeaderLength = (device->info.addressWidth == 4U) ? 5U : 4U;
-    w25qxxxBuildAddressCommand(lHeader, w25qxxxGetBlockEraseCommand(device), address, device->info.addressWidth);
-    lStatus = w25qxxxTransferInternal(device, lHeader, lHeaderLength, NULL, 0U, NULL, 0U);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    return w25qxxxWaitReadyInternal(device, W25QXXX_BLOCK_ERASE_TIMEOUT_MS);
-}
-
-eW25qxxxStatus w25qxxxEraseChip(stW25qxxxDevice *device)
-{
-    uint8_t lCommand;
-    eW25qxxxStatus lStatus;
-
-    if (!w25qxxxIsReadyForAccess(device)) {
-        return W25QXXX_STATUS_NOT_READY;
-    }
-
-    lStatus = w25qxxxWriteEnableInternal(device);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    lCommand = W25QXXX_CMD_CHIP_ERASE;
-    lStatus = w25qxxxTransferInternal(device, &lCommand, 1U, NULL, 0U, NULL, 0U);
-    if (lStatus != W25QXXX_STATUS_OK) {
-        return lStatus;
-    }
-
-    return w25qxxxWaitReadyInternal(device, W25QXXX_CHIP_ERASE_TIMEOUT_MS);
 }
 /**************************End of file********************************/

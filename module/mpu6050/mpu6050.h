@@ -15,10 +15,16 @@
 #include <stdint.h>
 
 #include "drviic.h"
-
+#include "drvanlogiic.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef enum eMPU6050DevMap {
+    MPU6050_DEV0 = 0,
+    MPU6050_DEV1,
+    MPU6050_DEV_MAX,
+} eMPU6050MapType;
 
 #define MPU6050_IIC_ADDRESS_LOW          0x68U
 #define MPU6050_IIC_ADDRESS_HIGH         0x69U
@@ -30,6 +36,7 @@ extern "C" {
 #define MPU6050_REG_GYRO_CONFIG          0x1BU
 #define MPU6050_REG_ACCEL_CONFIG         0x1CU
 #define MPU6050_REG_ACCEL_XOUT_H         0x3BU
+#define MPU6050_REG_TEMP_OUT_H           0x41U
 #define MPU6050_REG_PWR_MGMT_1           0x6BU
 #define MPU6050_REG_PWR_MGMT_2           0x6CU
 #define MPU6050_REG_WHO_AM_I             0x75U
@@ -39,9 +46,6 @@ extern "C" {
 #define MPU6050_PWR1_CLKSEL_PLL_XGYRO    0x01U
 
 #define MPU6050_SAMPLE_BYTES             14U
-
-typedef eDrvStatus eMpu6050Status;
-typedef eDrvStatus eMpu6050DrvIicStatus;
 
 #define MPU6050_STATUS_OK                 DRV_STATUS_OK
 #define MPU6050_STATUS_INVALID_PARAM      DRV_STATUS_INVALID_PARAM
@@ -76,9 +80,9 @@ typedef enum eMpu6050PortIicType {
     MPU6050_PORT_IIC_TYPE_MAX,
 } eMpu6050PortIicType;
 
-typedef eMpu6050DrvIicStatus (*mpu6050PortIicInitFunc)(uint8_t bus);
-typedef eMpu6050DrvIicStatus (*mpu6050PortIicWriteRegFunc)(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length);
-typedef eMpu6050DrvIicStatus (*mpu6050PortIicReadRegFunc)(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*mpu6050PortIicInitFunc)(uint8_t bus);
+typedef eDrvStatus (*mpu6050PortIicWriteRegFunc)(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, const uint8_t *buffer, uint16_t length);
+typedef eDrvStatus (*mpu6050PortIicReadRegFunc)(uint8_t bus, uint8_t address, const uint8_t *regBuf, uint16_t regLen, uint8_t *buffer, uint16_t length);
 
 typedef struct stMpu6050PortIicInterface {
     mpu6050PortIicInitFunc init;
@@ -117,15 +121,15 @@ typedef struct stMpu6050Dev {
     bool isReady;
 } stMpu6050Device;
 
-void mpu6050GetDefCfg(eMPU6050MapType device);
-eMpu6050Status mpu6050Init(eMPU6050MapType device);
+eDrvStatus mpu6050GetDefCfg(eMPU6050MapType device);
+eDrvStatus mpu6050Init(eMPU6050MapType device);
 bool mpu6050IsReady(eMPU6050MapType device);
-eMpu6050Status mpu6050ReadId(eMPU6050MapType device, uint8_t *devId);
-eMpu6050Status mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *value);
-eMpu6050Status mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t value);
-eMpu6050Status mpu6050SetSleep(eMPU6050MapType device, bool enable);
-eMpu6050Status mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample);
-eMpu6050Status mpu6050ReadTempCdC(eMPU6050MapType device, int32_t *tempCdC);
+eDrvStatus mpu6050ReadId(eMPU6050MapType device, uint8_t *devId);
+eDrvStatus mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *value);
+eDrvStatus mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t value);
+eDrvStatus mpu6050SetSleep(eMPU6050MapType device, bool enable);
+eDrvStatus mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample);
+eDrvStatus mpu6050ReadTempCdC(eMPU6050MapType device, int32_t *tempCdC);
 
 #ifdef __cplusplus
 }

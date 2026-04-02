@@ -1,8 +1,8 @@
 /************************************************************************************
 * @file     : w25qxxx_port.h
-* @brief    : W25Qxxx module port-layer SPI binding definitions.
-* @details  : This file adapts the generic W25Qxxx module to the reusable drvspi
-*             public interface and provides platform timing hooks.
+* @brief    : W25Qxxx project port-layer declarations.
+* @details  : This file keeps project-level SPI device mapping and timing hooks
+*             separate from the reusable W25Qxxx core implementation.
 ***********************************************************************************/
 #ifndef W25QXXX_PORT_H
 #define W25QXXX_PORT_H
@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "Rep/drvlayer/drvspi/drvspi.h"
+#include "w25qxxx.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,32 +20,12 @@ extern "C" {
 #define W25QXXX_PORT_READ_FILL_DATA           0xFFU
 #endif
 
-typedef enum eW25qxxxPortType {
-    W25QXXX_PORT_NONE = 0,
-    W25QXXX_PORT_DRVSPI,
-} eW25qxxxPortType;
-
-typedef eDrvStatus eW25qxxxPortStatus;
-
-typedef struct stW25qxxxPortBinding {
-    eW25qxxxPortType type;
-    eDrvSpiPortMap spi;
-} stW25qxxxPortBinding;
-
-typedef eW25qxxxPortStatus (*w25qxxxPortInitFunc)(const stW25qxxxPortBinding *binding);
-typedef eW25qxxxPortStatus (*w25qxxxPortTransferFunc)(const stW25qxxxPortBinding *binding, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength, uint8_t readFillData);
-typedef void (*w25qxxxPortDelayMsFunc)(uint32_t delayMs);
-
-typedef struct stW25qxxxPortInterface {
-    w25qxxxPortInitFunc init;
-    w25qxxxPortTransferFunc transfer;
-    w25qxxxPortDelayMsFunc delayMs;
-} stW25qxxxPortInterface;
-
-stW25qxxxPortBinding w25qxxxPortGetDefaultBinding(void);
-void w25qxxxPortSetHardwareSpi(stW25qxxxPortBinding *binding, eDrvSpiPortMap spi);
-bool w25qxxxPortIsValidBinding(const stW25qxxxPortBinding *binding);
-const stW25qxxxPortInterface *w25qxxxPortGetInterface(const stW25qxxxPortBinding *binding);
+void w25qxxxPortGetDefBind(stW25qxxxPortSpiBinding *bind);
+void w25qxxxPortGetDefCfg(eW25qxxxMapType device, stW25qxxxCfg *cfg);
+eDrvStatus w25qxxxPortSetHardSpi(stW25qxxxPortSpiBinding *bind, eDrvSpiPortMap spi);
+bool w25qxxxPortIsValidBind(const stW25qxxxPortSpiBinding *bind);
+bool w25qxxxPortHasValidSpiIf(const stW25qxxxPortSpiBinding *bind);
+const stW25qxxxPortSpiInterface *w25qxxxPortGetSpiIf(const stW25qxxxPortSpiBinding *bind);
 void w25qxxxPortDelayMs(uint32_t delayMs);
 
 #ifdef __cplusplus

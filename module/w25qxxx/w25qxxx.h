@@ -1,8 +1,9 @@
 /************************************************************************************
 * @file     : w25qxxx.h
-* @brief    : Reusable W25Qxxx SPI NOR flash module interface.
-* @details  : This module provides JEDEC ID probing, read, page program, and
-*             erase helpers on top of the generic drvspi abstraction.
+* @brief    : W25Qxxx SPI NOR flash module public interface.
+* @details  : This module keeps reusable flash logic in the core layer and
+*             relies on the port layer to bind logical device instances to the
+*             project drvspi implementation.
 ***********************************************************************************/
 #ifndef W25QXXX_H
 #define W25QXXX_H
@@ -10,11 +11,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "w25qxxx_port.h"
+#include "Rep/drvlayer/drvspi/drvspi.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef enum eW25qxxxDevMap {
+    W25QXXX_DEV0 = 0,
+    W25QXXX_DEV1,
+    W25QXXX_DEV_MAX,
+} eW25qxxxMapType;
 
 #define W25QXXX_MANUFACTURER_ID              0xEFU
 #define W25QXXX_PAGE_SIZE                    256U
@@ -40,6 +47,30 @@ typedef eDrvStatus eW25qxxxStatus;
 #define W25QXXX_STATUS_ERROR              DRV_STATUS_ERROR
 #define W25QXXX_STATUS_OUT_OF_RANGE       ((eW25qxxxStatus)(DRV_STATUS_ERROR + 1))
 
+typedef enum eW25qxxxPortSpiType {
+    W25QXXX_PORT_SPI_TYPE_NONE = 0,
+    W25QXXX_PORT_SPI_TYPE_HARDWARE,
+    W25QXXX_PORT_SPI_TYPE_MAX,
+} eW25qxxxPortSpiType;
+
+typedef eDrvStatus (*w25qxxxPortSpiInitFunc)(uint8_t bus);
+typedef eDrvStatus (*w25qxxxPortSpiTransferFunc)(uint8_t bus, const uint8_t *writeBuffer, uint16_t writeLength, const uint8_t *secondWriteBuffer, uint16_t secondWriteLength, uint8_t *readBuffer, uint16_t readLength, uint8_t readFillData);
+
+typedef struct stW25qxxxPortSpiInterface {
+    w25qxxxPortSpiInitFunc init;
+    w25qxxxPortSpiTransferFunc transfer;
+} stW25qxxxPortSpiInterface;
+
+typedef struct stW25qxxxPortSpiBinding {
+    eW25qxxxPortSpiType type;
+    uint8_t bus;
+    const stW25qxxxPortSpiInterface *spiIf;
+} stW25qxxxPortSpiBinding;
+
+typedef struct stW25qxxxCfg {
+    stW25qxxxPortSpiBinding spiBind;
+} stW25qxxxCfg;
+
 typedef struct stW25qxxxInfo {
     uint8_t manufacturerId;
     uint8_t memoryType;
@@ -52,23 +83,25 @@ typedef struct stW25qxxxInfo {
 } stW25qxxxInfo;
 
 typedef struct stW25qxxxDevice {
-    stW25qxxxPortBinding binding;
+    stW25qxxxCfg cfg;
     stW25qxxxInfo info;
     bool isReady;
 } stW25qxxxDevice;
 
-void w25qxxxGetDefaultConfig(stW25qxxxDevice *device);
-eW25qxxxStatus w25qxxxInit(stW25qxxxDevice *device);
-bool w25qxxxIsReady(const stW25qxxxDevice *device);
-const stW25qxxxInfo *w25qxxxGetInfo(const stW25qxxxDevice *device);
-eW25qxxxStatus w25qxxxReadJedecId(stW25qxxxDevice *device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId);
-eW25qxxxStatus w25qxxxReadStatus1(stW25qxxxDevice *device, uint8_t *statusValue);
-eW25qxxxStatus w25qxxxWaitReady(stW25qxxxDevice *device, uint32_t timeoutMs);
-eW25qxxxStatus w25qxxxRead(stW25qxxxDevice *device, uint32_t address, uint8_t *buffer, uint32_t length);
-eW25qxxxStatus w25qxxxWrite(stW25qxxxDevice *device, uint32_t address, const uint8_t *buffer, uint32_t length);
-eW25qxxxStatus w25qxxxEraseSector(stW25qxxxDevice *device, uint32_t address);
-eW25qxxxStatus w25qxxxEraseBlock64k(stW25qxxxDevice *device, uint32_t address);
-eW25qxxxStatus w25qxxxEraseChip(stW25qxxxDevice *device);
+eW25qxxxStatus w25qxxxGetDefCfg(eW25qxxxMapType device);
+eW25qxxxStatus w25qxxxGetCfg(eW25qxxxMapType device, stW25qxxxCfg *cfg);
+eW25qxxxStatus w25qxxxSetCfg(eW25qxxxMapType device, const stW25qxxxCfg *cfg);
+eW25qxxxStatus w25qxxxInit(eW25qxxxMapType device);
+bool w25qxxxIsReady(eW25qxxxMapType device);
+const stW25qxxxInfo *w25qxxxGetInfo(eW25qxxxMapType device);
+eW25qxxxStatus w25qxxxReadJedecId(eW25qxxxMapType device, uint8_t *manufacturerId, uint8_t *memoryType, uint8_t *capacityId);
+eW25qxxxStatus w25qxxxReadStatus1(eW25qxxxMapType device, uint8_t *statusValue);
+eW25qxxxStatus w25qxxxWaitReady(eW25qxxxMapType device, uint32_t timeoutMs);
+eW25qxxxStatus w25qxxxRead(eW25qxxxMapType device, uint32_t address, uint8_t *buffer, uint32_t length);
+eW25qxxxStatus w25qxxxWrite(eW25qxxxMapType device, uint32_t address, const uint8_t *buffer, uint32_t length);
+eW25qxxxStatus w25qxxxEraseSector(eW25qxxxMapType device, uint32_t address);
+eW25qxxxStatus w25qxxxEraseBlock64k(eW25qxxxMapType device, uint32_t address);
+eW25qxxxStatus w25qxxxEraseChip(eW25qxxxMapType device);
 
 #ifdef __cplusplus
 }

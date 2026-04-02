@@ -1,20 +1,34 @@
-# Module 通用生成指南
+# Module 层文档总说明
 
-## 1. 目标
+## 1. 文档定位
 
-本文档基于 `mpu6050` 模块的实现方式抽象出一套通用的 module 层生成规范，用于指导后续生成其他可复用模块。
+`USER/Rep/module/module.md` 只做一件事：指导如何在本工程生成一个新的 module。
 
-module 层的核心目标如下：
+它回答的是通用问题：
 
-- 对上提供清晰、稳定、易复用的业务接口。
-- 对下只依赖 drv 层公共接口，不直接依赖 bsp 层实现。
-- 将可复用逻辑放在模块核心文件中，将板级适配、总线映射、延时和底层接口选择放在 port 层。
-- 支持同一模块实例在运行时绑定不同 drv 实现。
-- 保持接口参数校验、状态返回和错误处理风格一致。
+- 为什么新模块必须拆成 core 和 port。
+- 新模块应该有哪些文件。
+- 对外 API、配置结构、状态码、实例管理应该怎么组织。
+- port 层需要向 core 层提供什么最小能力。
+- 新模块从建目录到可编译，建议按什么顺序推进。
 
-## 2. 推荐目录结构
+它不负责描述某个具体模块的寄存器、命令时序或适配细节。那些内容应写在各自模块目录里的 `<module>.md` 中。
 
-每个模块建议放在独立目录中，目录结构如下：
+## 2. 文档分工
+
+module 目录下的文档按下面方式分工：
+
+- `module.md`：新建模块的通用生成规范。
+- `<module>/<module>.md`：该模块内部文件如何分工、core 需要什么、port 应如何链接 drv 来满足 core。
+
+判断原则如下：
+
+- 只要这段内容对大多数新模块都成立，写进 `module.md`。
+- 只要这段内容依赖某个具体模块的寄存器、命令、传输形式或初始化流程，写进对应模块自己的 md。
+
+## 3. 标准目录结构
+
+新模块默认采用下面的目录结构：
 
 ```text
 <module>/
@@ -25,328 +39,283 @@ module 层的核心目标如下：
     <module>.md
 ```
 
-各文件职责如下：
+各文件职责固定如下：
 
-- `<module>.h`：模块公共类型、状态码、配置结构、实例结构、业务接口声明。
-- `<module>.c`：模块核心逻辑、参数校验、状态流转、寄存器或协议读写封装。
-- `<module>_port.h`：port 层公共类型、drv 绑定结构、底层接口函数指针、时序相关配置。
-- `<module>_port.c`：将模块绑定到具体 drv 实现，处理默认映射、状态转换、延时和平台适配。
-- `<module>.md`：模块说明文档，描述模块用途、文件职责、初始化流程、公共 API 和验证方式。
+- `<module>.h`：公共宏、状态码、枚举、结构体、公共函数声明。
+- `<module>.c`：模块核心逻辑，只表达模块语义，不直接依赖 bsp。
+- `<module>_port.h`：port 绑定结构、port 接口表、平台相关钩子声明。
+- `<module>_port.c`：默认总线映射、drv 适配函数、延时函数、板级连接方式。
+- `<module>.md`：本模块内部设计说明，重点写 core 和 port 的契约。
 
-## 3. 分层原则
+## 4. 分层原则
 
-### 3.1 module 核心层
+### 4.1 core 层负责什么
 
-`<module>.c` 和 `<module>.h` 应只关心模块本身的业务逻辑，不应直接包含 bsp 相关头文件。
+`<module>.c/.h` 负责：
 
-核心层应负责：
+- 模块公共语义。
+- 参数校验。
+- 默认配置装载触发。
+- 初始化流程编排。
+- 寄存器访问、协议读写、业务读写逻辑。
+- 运行时状态维护，例如 `isReady`、缓存、探测结果、统计信息。
 
-- 默认配置初始化。
-- 模块实例合法性检查。
-- 模块 ready 状态管理。
-- 对底层 drv 状态码进行统一映射。
-- 对外提供读、写、配置、控制、查询类接口。
-- 纯逻辑数据解析与结果转换。
+`<module>.c/.h` 不负责：
 
-核心层不应负责：
-
-- 具体硬件引脚定义。
-- 具体外设编号硬编码。
-- 平台延时实现。
+- GPIO、bus 对应哪一路外设。
+- 使用硬件 IIC、软件 IIC、硬件 SPI 还是其他板级资源。
+- FreeRTOS 与裸机差异。
 - 直接调用 bsp 层函数。
 
-### 3.2 port 适配层
+### 4.2 port 层负责什么
 
-`<module>_port.c` 和 `<module>_port.h` 负责将 module 层与具体 drv 层连接起来。
+`<module>_port.c/.h` 负责：
 
-port 层应负责：
+- 默认绑定和默认配置。
+- 把 drv 公共接口适配成 core 所需的最小动作集合。
+- 把逻辑 bus 编号转换成 drv 枚举。
+- 延时、等待、平台差异处理。
+- 当前板子的连接方式。
 
-- 定义可选底层类型，例如硬件接口、软件接口、空接口。
-- 提供默认绑定。
-- 提供切换到底层 drv 的辅助函数。
-- 封装底层 drv 的 init、read、write 等适配函数。
-- 提供模块运行依赖的延时函数或其他平台钩子。
-- 将底层 drv 返回值映射到 module 可识别的中间状态。
+`<module>_port.c/.h` 不负责：
 
-port 层不应负责：
+- 寄存器语义。
+- 业务状态机。
+- 初始化顺序本身。
+- 面向上层的业务 API。
 
-- 实现模块业务规则。
-- 暴露不必要的板级细节到模块核心层。
+## 5. 生成新模块时先确定的四件事
 
-## 4. 命名约定
+开始写代码前，先明确这四件事：
 
-以模块名 `<module>` 为统一前缀，遵循项目 camelCase 风格。
+1. 这个模块对上真正要暴露哪些稳定能力。
+2. 这个模块对下最少需要哪些 drv 动作。
+3. 哪些默认值属于“当前硬件怎么接的”，因此应放在 port 层。
+4. 哪些字段属于运行态，因此应放在内部 `Device/Ctx` 而不是 `Cfg`。
 
-推荐命名模式如下：
+这四件事明确后，文件结构和接口设计基本就固定了。
 
-- 状态枚举：`e<Module>Status`
-- 配置或实例结构体：`st<Module>Dev`、`st<Module>Cfg`、`st<Module>Sample`
-- port 绑定结构：`st<Module>PortXxxBinding`
-- port 接口表：`st<Module>PortXxxInterface`
-- 获取默认配置：`<module>GetDefaultCfg()`
-- 初始化：`<module>Init()`
-- 就绪检查：`<module>IsReady()`
-- 读接口：`<module>ReadXxx()`
-- 写接口：`<module>WriteXxx()`
-- 控制接口：`<module>SetXxx()`
-- port 默认绑定：`<module>PortGetDefaultBinding()`
-- port 切换底层：`<module>PortSetHardwareXxx()`、`<module>PortSetSoftwareXxx()`
+## 6. 推荐的数据结构
 
-如果模块没有“设备”语义，也可以将 `st<Module>Dev` 替换为更合适的实例名，但仍建议保留一个实例结构体承载运行状态。
+### 6.1 逻辑设备编号
 
-## 5. 推荐数据结构
-
-### 5.1 状态码
-
-每个模块的结果状态建议统一对齐 `eDrvStatus`，公共结果直接复用通用状态值，不再重复维护一套语义相同的枚举。推荐至少覆盖以下通用成员：
-
-- `DRV_STATUS_OK`
-- `DRV_STATUS_INVALID_PARAM`
-- `DRV_STATUS_NOT_READY`
-- `DRV_STATUS_BUSY`
-- `DRV_STATUS_TIMEOUT`
-- `DRV_STATUS_UNSUPPORTED`
-- `DRV_STATUS_ERROR`
-
-如果模块确实需要表达通用状态无法覆盖的结果，可以在 `DRV_STATUS_ERROR` 之后继续扩展模块私有状态值。例如：
-
-- `CRC_ERROR` 可作为扩展值追加在通用状态之后
-- `OUT_OF_RANGE` 可作为扩展值追加在通用状态之后
-
-### 5.2 实例结构体
-
-推荐让一个实例结构体同时承载：
-
-- 底层绑定信息。
-- 用户可配置参数。
-- 模块当前在线或就绪状态。
-- 必要的缓存或上下文字段。
-
-可以参考如下字段组织方式：
+如果模块对应固定数量的板级器件，优先使用逻辑设备编号：
 
 ```c
-typedef struct st<Module>Dev {
-    st<Module>PortBinding binding;
-    uint8_t address;
-    uint8_t option;
-    bool isOnline;
-    struct data;
-} st<Module>Dev;
+typedef enum eXxxDevMap {
+    XXX_DEV0 = 0,
+    XXX_DEV1,
+    XXX_DEV_MAX,
+} eXxxMapType;
 ```
 
-有可配置的参数一定要拆为 `st<Module>Cfg` 和 `st<Module>Dev` 两层结构，但要保持接口清晰。
+这样可以统一：
 
-### 5.3 port 接口表
+- 上层入口。
+- 默认映射。
+- 内部上下文数组。
 
-当 module 需要适配多个 drv 实现时，推荐在 port 层定义函数指针表。例如：
+### 6.2 配置与运行态分离
+
+推荐至少拆成下面两层：
 
 ```c
-typedef eDrvStatus (*<module>PortInitFunc)(uint8_t bus);
-typedef eDrvStatus (*<module>PortWriteFunc)(uint8_t bus, uint8_t address, const uint8_t *buffer, uint16_t length);
-typedef eDrvStatus (*<module>PortReadFunc)(uint8_t bus, uint8_t address, uint8_t *buffer, uint16_t length);
+typedef struct stXxxCfg {
+    stXxxPortBind bind;
+} stXxxCfg;
 
-typedef struct st<Module>PortInterface {
-    <module>PortInitFunc init;
-    <module>PortWriteFunc write;
-    <module>PortReadFunc read;
-} st<Module>PortInterface;
+typedef struct stXxxDevice {
+    stXxxCfg cfg;
+    bool isReady;
+} stXxxDevice;
 ```
 
-如果模块需要寄存器读写，可以将 `registerBuffer` 和 `registerLength` 也纳入接口。
+补充原则：
 
-## 6. 推荐公共 API 形态
+- `Cfg` 只放可配置项。
+- `Device/Ctx` 持有 `Cfg`，并补充所有运行态。
+- 缓存、探测结果、统计值不要混进 `Cfg`。
 
-一个通用 module 建议优先提供以下接口：
+### 6.3 最小 port 接口表
 
-1. `<module>GetDefaultCfg()`
-2. `<module>Init()`
-3. `<module>IsReady()`
-4. `<module>ReadXxx()`
-5. `<module>WriteXxx()` 或 `<module>SetXxx()`
-6. `<module>GetXxx()`
+core 不应该直接看到完整 drv API，而应该只看到自己真正需要的最小动作。
 
-说明如下：
+例如：
 
-- `GetDefaultCfg`：初始化实例或配置结构，避免调用方遗漏字段。
-- `Init`：完成底层初始化、设备探测、自检、默认配置下发等步骤。
-- `IsReady`：仅用于快速判断实例当前是否可正常访问。
-- `ReadXxx`：读取模块数据、状态或寄存器。
-- `WriteXxx` 或 `SetXxx`：设置寄存器、模式或控制位。
-- `GetXxx`：获取运行状态、配置、派生值或转换结果。
+```c
+typedef eDrvStatus (*xxxPortInitFunc)(uint8_t bus);
+typedef eDrvStatus (*xxxPortReadRegFunc)(uint8_t bus, ...);
+typedef eDrvStatus (*xxxPortWriteRegFunc)(uint8_t bus, ...);
 
-如果某个模块只需要极少接口，也应尽量保留 `GetDefaultCfg` 和 `Init` 这两个入口，保持使用方式一致。
-
-## 7. 推荐初始化流程
-
-可以按下面顺序组织初始化逻辑：
-
-1. 校验实例指针和基础参数是否合法。
-2. 校验底层绑定是否合法。
-3. 获取 port 层接口表，并确认接口函数完整可用。
-4. 调用底层 `init`。
-5. 清除实例在线状态，避免旧状态残留。
-6. 读取关键标识信息，例如设备 ID、版本号或握手结果。
-7. 如需复位，发送复位命令并等待必要延时。
-8. 下发模块关键配置。
-9. 全部成功后将实例标记为 ready 或 online。
-10. 任一步骤失败时立即返回明确状态码。
-
-这套流程适用于传感器、通信外设、协议封装器以及其他需要显式 bring-up 的模块。
-
-## 8. `.h` 文件编写建议
-
-头文件建议包含以下内容：
-
-- include guard
-- 必要标准库头文件
-- 对应的 `<module>_port.h`
-- `extern "C"` 兼容块
-- 宏定义
-- 状态枚举
-- 配置或实例结构体
-- 公开数据结构体
-- 公共函数声明
-
-头文件中应避免：
-
-- 定义内部静态辅助函数
-- 暴露不必要的私有寄存器细节
-- 包含与公共接口无关的重量级头文件
-
-## 9. `.c` 文件编写建议
-
-源文件建议包含以下内容：
-
-- 必要的内部 `static` 辅助函数声明
-- 参数合法性检查函数
-- ready 条件检查函数
-- 状态映射函数
-- 底层接口获取函数
-- 对外公共函数实现
-- 纯内部辅助逻辑
-
-推荐的内部辅助函数模式：
-
-- `<module>IsValidXxx()`
-- `<module>IsReadyForTransfer()`
-- `<module>MapDrvStatus()`
-- `<module>GetXxxInterface()`
-- `<module>ReadInternal()`
-- `<module>WriteInternal()`
-
-内部辅助函数统一使用 `static`，不要暴露到头文件。
-
-## 10. `port` 层编写建议
-
-`<module>_port.h` 和 `<module>_port.c` 建议至少提供以下内容：
-
-- 默认绑定宏或延时宏。
-- 底层类型枚举。
-- 底层绑定结构体。
-- drv 中间状态枚举。
-- 函数指针接口表。
-- 获取默认绑定函数。
-- 设置具体 drv 绑定函数。
-- 校验绑定是否合法的函数。
-- 获取接口表函数。
-- 延时函数或其他平台相关钩子。
-
-如果一个模块可能同时跑在硬件接口和软件接口上，应优先用接口表而不是在核心层堆叠 `switch`。
-
-## 11. 错误处理要求
-
-生成模块时应遵循以下要求：
-
-- 模块边界必须校验指针、长度、枚举值和关键参数。
-- 不要静默忽略底层初始化失败、通信失败、超时或设备不匹配。
-- 公共接口返回明确状态码，不要用隐式全局状态表达错误。
-- 初始化失败后，应让实例保持不可用状态。
-- 对于可恢复错误，可以保留重试空间，但不要在底层无限阻塞。
-
-## 12. 可复用性要求
-
-为了让模块可以迁移到其他项目，生成时应满足以下约束：
-
-- 核心层不依赖具体芯片寄存器头文件。
-- 核心层不直接调用 `bspXxx()` 接口。
-- 底层访问统一经由 port 层函数指针表。
-- 默认配置通过显式函数写入，不依赖隐式静态初始化。
-- 一个模块实例应能独立持有自己的底层绑定信息。
-
-## 13. 生成新模块时的建议步骤
-
-1. 明确模块对外职责，是传感器、通信设备还是纯协议模块。
-2. 确定模块核心依赖的是哪一类 drv 公共接口。
-3. 先定义 `<module>_port.h` 中的绑定结构和接口表。
-4. 再定义 `<module>.h` 中的状态码、实例结构体和对外 API。
-5. 在 `<module>.c` 中实现默认配置、初始化流程和核心业务接口。
-6. 在 `<module>_port.c` 中完成底层适配、默认映射和延时函数。
-7. 编写 `<module>.md`，说明用途、文件职责、初始化流程和验证方式。
-8. 最后进行编译验证，并记录仍需硬件验证的部分。
-
-## 14. 新模块文档模板
-
-每个模块目录下的 `<module>.md` 建议采用如下结构：
-
-```md
-# <MODULE> Module
-
-## Overview
-
-- 说明模块作用。
-- 说明模块依赖的 drv 抽象。
-- 说明实例是否支持运行时切换底层接口。
-- 说明默认地址、默认端口或默认模式。
-
-## Files
-
-- `<module>.h`：说明公共接口职责。
-- `<module>.c`：说明核心逻辑职责。
-- `<module>_port.h`：说明 port 公共接口职责。
-- `<module>_port.c`：说明底层适配职责。
-
-## Initialization Flow
-
-1. 调用 `<module>GetDefaultCfg()`。
-2. 按需修改默认配置。
-3. 按需切换到底层 drv 绑定。
-4. 调用 `<module>Init()`。
-
-## Public API
-
-- `<module>Init(...)`：说明初始化行为。
-- `<module>ReadXxx(...)`：说明读取行为。
-- `<module>WriteXxx(...)`：说明写入行为。
-- `<module>SetXxx(...)`：说明控制行为。
-
-## Verification Notes
-
-- 说明编译验证情况。
-- 说明仍需硬件验证或联调验证的内容。
+typedef struct stXxxPortInterface {
+    xxxPortInitFunc init;
+    xxxPortReadRegFunc readReg;
+    xxxPortWriteRegFunc writeReg;
+} stXxxPortInterface;
 ```
 
-## 15. 生成检查清单
+接口表设计规则：
 
-生成新模块后，至少检查以下项目：
+- 只保留 core 真正调用的动作。
+- 函数参数直接服务于 core 的访问语义。
+- 不把 drv 私有结构体、bsp 句柄或硬件细节泄露给 core。
 
-- 是否只有 module 核心层依赖 `<module>_port.h`，而不直接依赖 bsp。
-- 是否所有公共接口都带有模块名前缀。
-- 是否存在 `GetDefaultCfg` 和 `Init`。
-- 是否对参数和状态进行了充分校验。
-- 是否有明确的 ready 或 online 状态。
-- 是否对底层状态做了统一映射。
-- 是否将平台相关逻辑隔离在 port 层。
-- 是否补充了模块说明文档。
-- 是否完成编译验证。
-- 是否明确标注仍需硬件验证的内容。
+## 7. port 链接函数怎么设计
 
-## 16. 适用范围
+port 层最重要的内容不是默认映射，而是“链接函数”如何把 drv 接到 core。
 
-本模板特别适合以下类型的模块：
+这里的链接函数，指的就是 `*_port.c` 里那组 adapter，例如：
 
-- 传感器模块
-- 外设芯片模块
-- 基于 IIC、SPI、UART 的器件模块
-- 对底层 drv 有明确依赖的协议封装模块
+- `xxxPortHardIicInitAdpt()`
+- `xxxPortHardIicReadRegAdpt()`
+- `xxxPortHardIicWriteRegAdpt()`
+- `xxxPortHardSpiTransferAdpt()`
 
-对于纯算法模块或完全不涉及底层驱动的工具模块，可以简化 port 层，但仍建议保留清晰的实例结构体、状态返回和文档结构。
+这些函数必须满足以下要求：
+
+1. 函数签名由 core 需要的最小动作决定，而不是照搬 drv 全接口。
+2. 函数内部先校验 `bus` 和关键参数，再调用底层 drv。
+3. 返回值统一使用 `eDrvStatus` 或模块约定的兼容状态。
+4. 不在 adapter 里混入业务语义，例如寄存器初始化顺序、容量推导、数据解析。
+5. 如果底层 drv 需要组包，组包动作可以放在 adapter 中，但组包后的语义仍然要保持通用。
+
+换句话说，adapter 只做“翻译”，不做“决策”。
+
+## 8. core 对 port 的典型需求
+
+新模块设计时，可以先从 core 反推 port 需要提供什么能力。常见模式如下：
+
+### 8.1 寄存器类模块
+
+适用于传感器、控制器、编解码器等：
+
+- `init(bus)`
+- `readReg(bus, address, regBuf, regLen, buffer, length)`
+- `writeReg(bus, address, regBuf, regLen, buffer, length)`
+- `delayMs(delayMs)`
+
+### 8.2 流式传输类模块
+
+适用于 SPI Flash、显示器、某些总线外设：
+
+- `init(bus)`
+- `transfer(bus, writeBuffer, writeLength, secondWriteBuffer, secondWriteLength, readBuffer, readLength, readFillData)`
+- `delayMs(delayMs)`
+
+### 8.3 查询状态类模块
+
+如果模块初始化或业务流程要轮询底层状态，可以在 core 中组织轮询逻辑，port 只提供一次原子访问能力。不要把轮询策略写进 port。
+
+## 9. 推荐 API 形态
+
+通用情况下，建议公共 API 按下面顺序组织：
+
+- `<module>GetDefCfg(device)`
+- `<module>GetCfg(device, &cfg)`
+- `<module>SetCfg(device, &cfg)`
+- `<module>Init(device)`
+- `<module>IsReady(device)`
+- `<module>GetInfo(device)` 或 `<module>GetState(device)`
+- `<module>ReadReg()` / `<module>WriteReg()` / `<module>ReadId()`
+- `<module>ReadXxx()` / `<module>WriteXxx()` / `<module>SetXxx()` / `<module>EraseXxx()`
+
+不是每个模块都要全部具备，但顺序建议尽量统一。
+
+## 10. 初始化流程模板
+
+`Init()` 建议按下面顺序实现：
+
+1. 获取设备上下文。
+2. 校验设备编号是否合法。
+3. 校验配置是否合法。
+4. 校验绑定是否合法。
+5. 校验 port 接口表是否完整。
+6. 初始化底层总线。
+7. 清理 `isReady` 和旧缓存。
+8. 读取关键 ID 或在线状态。
+9. 下发复位、时序、模式、容量等初始化配置。
+10. 所有步骤成功后再置 `isReady = true`。
+
+这样做的目的：
+
+- 初始化失败时状态清晰。
+- 旧缓存不会被误用。
+- 调试时容易定位失败阶段。
+
+## 11. 状态码规则
+
+新增模块时优先复用 `eDrvStatus`。
+
+建议规则：
+
+- 参数错误直接返回 `DRV_STATUS_INVALID_PARAM`。
+- 未初始化或 port 接口未就绪返回 `DRV_STATUS_NOT_READY`。
+- 设备 ID 不匹配返回 `DRV_STATUS_ID_NOTMATCH`。
+- 底层通信失败直接透传 drv 状态。
+- 模块业务独有错误，例如越界、对齐错误、协议不支持，可从 `DRV_STATUS_ERROR + 1` 往后扩展。
+
+## 12. 默认值放在哪里
+
+下面这些通常放 port 层：
+
+- 默认 bus。
+- 默认总线类型。
+- 默认地址。
+- 默认片选。
+- 平台相关延时常量。
+
+下面这些通常放 core 层：
+
+- 协议命令。
+- 寄存器地址。
+- 数据解析公式。
+- 初始化流程语义。
+
+判断标准只有一句话：
+
+- 更像“器件怎么工作”的，放 core。
+- 更像“这块板子怎么接”的，放 port。
+
+## 13. 新模块落地步骤
+
+建议按下面顺序生成新模块：
+
+1. 建立目录和五个基础文件。
+2. 在 `<module>.h` 中先定义状态码、设备编号、配置结构、上下文结构、公共 API。
+3. 在 `<module>_port.h` 中定义绑定结构、port 接口表、默认配置函数、延时接口。
+4. 在 `<module>_port.c` 中先写默认映射，再写 adapter，再写绑定校验函数。
+5. 在 `<module>.c` 中实现默认配置装载、配置校验、初始化流程和业务接口。
+6. 在 `<module>.md` 中补齐“内部文件分工”和“port 如何满足 core”的说明。
+
+## 14. 每个模块自己的 md 应该写什么
+
+每个 `<module>.md` 至少应包含下面内容：
+
+```text
+# <module> 模块设计说明
+
+## 1. 模块目标
+## 2. 文件分工
+## 3. core 需要的最小底层能力
+## 4. port 链接函数设计
+## 5. 默认配置与默认映射
+## 6. 初始化流程
+## 7. 公共 API 使用顺序
+## 8. 错误处理与 ready 约束
+## 9. 后续扩展点
+```
+
+## 15. 自检清单
+
+写完一个新模块后，用下面清单检查：
+
+- core 是否仍然不依赖 bsp。
+- port 接口表是否只保留最小动作。
+- adapter 是否只负责翻译，不负责业务决策。
+- `Cfg` 和运行态是否已分离。
+- 默认映射是否放在 port 层。
+- `Init()` 是否分阶段并在最后置 ready。
+- 公共接口是否区分参数错误、未就绪、通信失败。
+- 模块自己的 md 是否已经写清 core 和 port 的契约。
+
+满足以上要求后，这个模块通常就符合当前工程的 module 层风格。

@@ -23,6 +23,7 @@
 #include "drvgpio_debug.h"
 #include "drvuart_debug.h"
 #include "Rep/module/w25qxxx/w25qxxx.h"
+#include "Rep/module/w25qxxx/w25qxxx_port.h"
 
 #define SENSOR_TASK_TAG "SensorTask"
 #define SENSOR_TASK_FLASH_TEST_ADDRESS       0U
@@ -36,8 +37,6 @@ static TaskHandle_t gConsoleTaskHandle = NULL;
 static TaskHandle_t gGuardTaskHandle = NULL;
 static TaskHandle_t gPowerTaskHandle = NULL;
 static TaskHandle_t gMemoryTaskHandle = NULL;
-static stW25qxxxDevice gSensorW25q128Device;
-static stW25qxxxDevice gSensorW25q64Device;
 static const uint8_t gSensorTaskW25q128Name[] = "W25Q128";
 static const uint8_t gSensorTaskW25q64Name[] = "W25Q64";
 
@@ -51,8 +50,8 @@ static void memoryTaskCallback(void *parameter);
 static bool createTasks(void);
 static bool initializeConsole(void);
 static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status);
-static void sensorTaskPrepareFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi);
-static bool sensorTaskVerifyFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId);
+static bool sensorTaskPrepareFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi);
+static bool sensorTaskVerifyFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId);
 static bool sensorTaskRunFlashDemo(void);
 
 static void process(void)
@@ -244,28 +243,44 @@ static const char *sensorTaskGetW25qxxxStatusString(eW25qxxxStatus status)
     }
 }
 
-static void sensorTaskPrepareFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi)
+static bool sensorTaskPrepareFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi)
 {
-    if (device == NULL) {
-        return;
+    stW25qxxxCfg lCfg;
+    eW25qxxxStatus lStatus;
+
+    lStatus = w25qxxxGetDefCfg(device);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return false;
     }
 
-    w25qxxxGetDefaultConfig(device);
-    w25qxxxPortSetHardwareSpi(&device->binding, spi);
+    lStatus = w25qxxxGetCfg(device, &lCfg);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return false;
+    }
+
+    lStatus = w25qxxxPortSetHardSpi(&lCfg.spiBind, spi);
+    if (lStatus != W25QXXX_STATUS_OK) {
+        return false;
+    }
+
+    return (w25qxxxSetCfg(device, &lCfg) == W25QXXX_STATUS_OK);
 }
 
-static bool sensorTaskVerifyFlashDevice(stW25qxxxDevice *device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId)
+static bool sensorTaskVerifyFlashDevice(eW25qxxxMapType device, eDrvSpiPortMap spi, const uint8_t *name, uint32_t nameLength, uint8_t expectedCapacityId)
 {
     uint8_t lReadBuffer[SENSOR_TASK_FLASH_BUFFER_SIZE];
     const stW25qxxxInfo *lInfo;
     eW25qxxxStatus lStatus;
 
-    if ((device == NULL) || (name == NULL) || (nameLength == 0U) || (nameLength >= SENSOR_TASK_FLASH_BUFFER_SIZE)) {
+    if ((name == NULL) || (nameLength == 0U) || (nameLength >= SENSOR_TASK_FLASH_BUFFER_SIZE)) {
         LOG_E(SENSOR_TASK_TAG, "Invalid flash test config on spi=%d", (int)spi);
         return false;
     }
 
-    sensorTaskPrepareFlashDevice(device, spi);
+    if (!sensorTaskPrepareFlashDevice(device, spi)) {
+        LOG_E(SENSOR_TASK_TAG, "Prepare flash config failed on spi=%d", (int)spi);
+        return false;
+    }
 
     lStatus = w25qxxxInit(device);
     if (lStatus != W25QXXX_STATUS_OK) {
@@ -360,12 +375,12 @@ static bool sensorTaskRunFlashDemo(void)
     LOG_I(SENSOR_TASK_TAG,
           "Start dual flash demo: W25Q128 PB10/PB14/PB15 CS=PE15, W25Q64 PA5/PA6/PA7 CS=PA4");
 
-    lW25q128Ok = sensorTaskVerifyFlashDevice(&gSensorW25q128Device,
+    lW25q128Ok = sensorTaskVerifyFlashDevice(W25QXXX_DEV0,
                                              DRVSPI_BUS0,
                                              gSensorTaskW25q128Name,
                                              sizeof(gSensorTaskW25q128Name) - 1U,
                                              SENSOR_TASK_W25Q128_CAPACITY_ID);
-    lW25q64Ok = sensorTaskVerifyFlashDevice(&gSensorW25q64Device,
+    lW25q64Ok = sensorTaskVerifyFlashDevice(W25QXXX_DEV1,
                                             DRVSPI_BUS1,
                                             gSensorTaskW25q64Name,
                                             sizeof(gSensorTaskW25q64Name) - 1U,

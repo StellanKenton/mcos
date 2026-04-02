@@ -23,34 +23,35 @@ static bool mpu6050IsValidDev(const stMpu6050Device *device);
 static bool mpu6050IsReadyXfer(const stMpu6050Device *device);
 static bool mpu6050IsCompatDevId(uint8_t devId);
 static const stMpu6050PortIicInterface *mpu6050GetIicIf(const stMpu6050Device *device);
-static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value);
-static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value);
-static eMpu6050Status mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length);
+static eDrvStatus mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value);
+static eDrvStatus mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value);
+static eDrvStatus mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length);
 static void mpu6050ClrRawSample(stMpu6050RawSample *sample);
 static int16_t mpu6050ParseBe16(const uint8_t *buffer);
 
-void mpu6050GetDefCfg(eMPU6050MapType device)
+eDrvStatus mpu6050GetDefCfg(eMPU6050MapType device)
 {
     stMpu6050Device *lDeviceCtx;
 
     lDeviceCtx = mpu6050GetDevCtx(device);
     if (lDeviceCtx == NULL) {
-        return;
+        return MPU6050_STATUS_INVALID_PARAM;
     }
 
     mpu6050LoadDefCfg(device, &lDeviceCtx->cfg);
     mpu6050ClrRawSample(&lDeviceCtx->data);
     lDeviceCtx->isReady = false;
     gMpu6050DefCfgDone[device] = true;
+    return MPU6050_STATUS_OK;
 }
 
-eMpu6050Status mpu6050Init(eMPU6050MapType device)
+eDrvStatus mpu6050Init(eMPU6050MapType device)
 {
     const stMpu6050PortIicInterface *lIicIf;
     stMpu6050Device *lDeviceCtx;
     uint8_t lDevId;
     uint8_t lValue;
-    eMpu6050Status lStatus;
+    eDrvStatus lStatus;
 
     lDeviceCtx = mpu6050GetDevCtx(device);
     if (!mpu6050IsValidDev(lDeviceCtx)) {
@@ -130,11 +131,11 @@ bool mpu6050IsReady(eMPU6050MapType device)
     return mpu6050IsReadyXfer(mpu6050GetDevCtx(device));
 }
 
-eMpu6050Status mpu6050ReadId(eMPU6050MapType device, uint8_t *devId)
+eDrvStatus mpu6050ReadId(eMPU6050MapType device, uint8_t *devId)
 {
     const stMpu6050PortIicInterface *lIicIf;
     stMpu6050Device *lDeviceCtx;
-    eMpu6050Status lStatus;
+    eDrvStatus lStatus;
 
     lDeviceCtx = mpu6050GetDevCtx(device);
     if ((devId == NULL) || !mpu6050IsValidDev(lDeviceCtx)) {
@@ -154,7 +155,7 @@ eMpu6050Status mpu6050ReadId(eMPU6050MapType device, uint8_t *devId)
     return mpu6050ReadRegInt(lDeviceCtx, MPU6050_REG_WHO_AM_I, devId);
 }
 
-eMpu6050Status mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *value)
+eDrvStatus mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *value)
 {
     stMpu6050Device *lDeviceCtx;
 
@@ -166,7 +167,7 @@ eMpu6050Status mpu6050ReadReg(eMPU6050MapType device, uint8_t regAddr, uint8_t *
     return mpu6050ReadRegInt(lDeviceCtx, regAddr, value);
 }
 
-eMpu6050Status mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t value)
+eDrvStatus mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t value)
 {
     stMpu6050Device *lDeviceCtx;
 
@@ -178,11 +179,11 @@ eMpu6050Status mpu6050WriteReg(eMPU6050MapType device, uint8_t regAddr, uint8_t 
     return mpu6050WriteRegInt(lDeviceCtx, regAddr, value);
 }
 
-eMpu6050Status mpu6050SetSleep(eMPU6050MapType device, bool enable)
+eDrvStatus mpu6050SetSleep(eMPU6050MapType device, bool enable)
 {
     stMpu6050Device *lDeviceCtx;
     uint8_t lValue;
-    eMpu6050Status lStatus;
+    eDrvStatus lStatus;
 
     lDeviceCtx = mpu6050GetDevCtx(device);
     if (!mpu6050IsReadyXfer(lDeviceCtx)) {
@@ -204,11 +205,11 @@ eMpu6050Status mpu6050SetSleep(eMPU6050MapType device, bool enable)
     return mpu6050WriteRegInt(lDeviceCtx, MPU6050_REG_PWR_MGMT_1, lValue);
 }
 
-eMpu6050Status mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample)
+eDrvStatus mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample)
 {
     stMpu6050Device *lDeviceCtx;
     uint8_t lBuffer[MPU6050_SAMPLE_BYTES];
-    eMpu6050Status lStatus;
+    eDrvStatus lStatus;
 
     if (sample == NULL) {
         return MPU6050_STATUS_INVALID_PARAM;
@@ -235,21 +236,29 @@ eMpu6050Status mpu6050ReadRaw(eMPU6050MapType device, stMpu6050RawSample *sample
     return MPU6050_STATUS_OK;
 }
 
-eMpu6050Status mpu6050ReadTempCdC(eMPU6050MapType device, int32_t *tempCdC)
+eDrvStatus mpu6050ReadTempCdC(eMPU6050MapType device, int32_t *tempCdC)
 {
-    stMpu6050RawSample lSample;
-    eMpu6050Status lStatus;
+    stMpu6050Device *lDeviceCtx;
+    uint8_t lBuffer[2];
+    int16_t lRawTemp;
+    eDrvStatus lStatus;
 
     if (tempCdC == NULL) {
         return MPU6050_STATUS_INVALID_PARAM;
     }
 
-    lStatus = mpu6050ReadRaw(device, &lSample);
+    lDeviceCtx = mpu6050GetDevCtx(device);
+    if (!mpu6050IsReadyXfer(lDeviceCtx)) {
+        return MPU6050_STATUS_NOT_READY;
+    }
+
+    lStatus = mpu6050ReadRegsInt(lDeviceCtx, MPU6050_REG_TEMP_OUT_H, lBuffer, 2U);
     if (lStatus != MPU6050_STATUS_OK) {
         return lStatus;
     }
 
-    *tempCdC = (((int32_t)lSample.temperature * 100) / 340) + 3653;
+    lRawTemp = mpu6050ParseBe16(lBuffer);
+    *tempCdC = (((int32_t)lRawTemp * 100) / 340) + 3653;
     return MPU6050_STATUS_OK;
 }
 
@@ -276,19 +285,11 @@ static stMpu6050Device *mpu6050GetDevCtx(eMPU6050MapType device)
 
 static void mpu6050LoadDefCfg(eMPU6050MapType device, stMpu6050Cfg *cfg)
 {
-    stMpu6050Cfg lPortCfg;
-
     if (cfg == NULL) {
         return;
     }
 
-    mpu6050PortGetDefCfg(device, &lPortCfg);
-    cfg->iicBind = lPortCfg.iicBind;
-    cfg->address = lPortCfg.address;
-    cfg->sampleRateDiv = lPortCfg.sampleRateDiv;
-    cfg->dlpfCfg = lPortCfg.dlpfCfg;
-    cfg->accelRange = (eMpu6050AccelRange)lPortCfg.accelRange;
-    cfg->gyroRange = (eMpu6050GyroRange)lPortCfg.gyroRange;
+    mpu6050PortGetDefCfg(device, cfg);
 }
 
 static bool mpu6050IsValidDev(const stMpu6050Device *device)
@@ -343,7 +344,7 @@ static const stMpu6050PortIicInterface *mpu6050GetIicIf(const stMpu6050Device *d
     return mpu6050PortGetIicIf(&device->cfg.iicBind);
 }
 
-static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value)
+static eDrvStatus mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t value)
 {
     const stMpu6050PortIicInterface *lIicIf;
 
@@ -355,7 +356,7 @@ static eMpu6050Status mpu6050WriteRegInt(const stMpu6050Device *device, uint8_t 
     return lIicIf->writeReg(device->cfg.iicBind.bus, device->cfg.address, &regAddr, 1U, &value, 1U);
 }
 
-static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value)
+static eDrvStatus mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *value)
 {
     const stMpu6050PortIicInterface *lIicIf;
 
@@ -371,7 +372,7 @@ static eMpu6050Status mpu6050ReadRegInt(const stMpu6050Device *device, uint8_t r
     return lIicIf->readReg(device->cfg.iicBind.bus, device->cfg.address, &regAddr, 1U, value, 1U);
 }
 
-static eMpu6050Status mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length)
+static eDrvStatus mpu6050ReadRegsInt(const stMpu6050Device *device, uint8_t regAddr, uint8_t *buffer, uint16_t length)
 {
     const stMpu6050PortIicInterface *lIicIf;
 
