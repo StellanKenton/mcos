@@ -22,15 +22,6 @@
 #include "task.h"
 #endif
 
-typedef struct stConsoleSession {
-    uint32_t transport;
-    stRingBuffer *inputBuffer;
-    char lineBuffer[CONSOLE_MAX_LINE_LENGTH];
-    uint16_t lineLength;
-    bool isLineOverflow;
-    uint32_t lastActivityTick;
-} stConsoleSession;
-
 static bool gConsoleIsInitialized = false;
 static stConsoleSession gConsoleSessions[CONSOLE_MAX_SESSIONS];
 static uint32_t gConsoleSessionCount = 0U;

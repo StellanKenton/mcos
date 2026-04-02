@@ -13,6 +13,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "ringbuffer.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +42,15 @@ extern "C" {
 #ifndef CONSOLE_REPLY_BUFFER_SIZE
 #define CONSOLE_REPLY_BUFFER_SIZE           160U
 #endif
+
+typedef struct stConsoleSession {
+    uint32_t transport;
+    stRingBuffer *inputBuffer;
+    char lineBuffer[CONSOLE_MAX_LINE_LENGTH];
+    uint16_t lineLength;
+    bool isLineOverflow;
+    uint32_t lastActivityTick;
+} stConsoleSession;
 
 typedef enum eConsoleCommandResult {
     CONSOLE_COMMAND_RESULT_OK = 0,

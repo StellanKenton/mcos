@@ -8,14 +8,12 @@
 * @copyright: Copyright (c) 2050
 ***********************************************************************************/
 #include "log.h"
+#include "log_port.h"
 
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "../../../SEGGER/bsp_rtt.h"
-#include "../drvlayer/drvuart/drvuart.h"
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
 #include "FreeRTOS.h"
@@ -62,10 +60,11 @@ static uint32_t gLogCriticalDepth = 0U;
 #endif
 
 static const char *logGetLevelLabel(eLogLevel level);
+static const stLogInterface *logGetInterfaces(void);
 static bool logIsValidOutputInterface(const stLogInterface *interface);
 static bool logIsValidInputInterface(const stLogInterface *interface);
 static int32_t logGetInterfaceIndexByTransport(uint32_t transport);
-static stLogInterface *logGetInterfaceByTransport(uint32_t transport);
+static const stLogInterface *logGetInterfaceByTransport(uint32_t transport);
 static stLogOutputState *logGetOutputStateByTransport(uint32_t transport);
 static uint32_t logGetAvailableInterfaceCount(void);
 static uint32_t logGetInterfaceCount(void);
@@ -92,26 +91,12 @@ static uint32_t logGetDefaultTimestamp(void)
 #endif
 }
 
-static stLogInterface gLogInterfaces[] = {
-    {
-        .transport = LOG_TRANSPORT_RTT,
-        .init = bspRttLogInit,
-        .write = bspRttLogWrite,
-        .getBuffer = bspRttLogGetInputBuffer,
-        .isOutputEnabled = true,
-        .isInputEnabled = true,
-    },
-    {
-        .transport = LOG_TRANSPORT_UART,
-        .init = drvUartLogInit,
-        .write = drvUartLogWrite,
-        .getBuffer = drvUartLogGetInputBuffer,
-        .isOutputEnabled = true,
-        .isInputEnabled = true,
-    },
-};
+static stLogOutputState gLogOutputStates[LOG_PORT_INTERFACE_COUNT];
 
-static stLogOutputState gLogOutputStates[sizeof(gLogInterfaces) / sizeof(gLogInterfaces[0])];
+static const stLogInterface *logGetInterfaces(void)
+{
+    return logPortGetInterfaces();
+}
 
 static bool logIsValidOutputInterface(const stLogInterface *interface)
 {
@@ -131,10 +116,15 @@ static bool logIsValidInputInterface(const stLogInterface *interface)
 
 static int32_t logGetInterfaceIndexByTransport(uint32_t transport)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint32_t lIndex = 0U;
 
+    if (lInterfaces == NULL) {
+        return -1;
+    }
+
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (gLogInterfaces[lIndex].transport == transport) {
+        if (lInterfaces[lIndex].transport == transport) {
             return (int32_t)lIndex;
         }
     }
@@ -142,15 +132,16 @@ static int32_t logGetInterfaceIndexByTransport(uint32_t transport)
     return -1;
 }
 
-static stLogInterface *logGetInterfaceByTransport(uint32_t transport)
+static const stLogInterface *logGetInterfaceByTransport(uint32_t transport)
 {
     int32_t lIndex = logGetInterfaceIndexByTransport(transport);
+    const stLogInterface *lInterfaces = logGetInterfaces();
 
-    if (lIndex < 0) {
+    if ((lIndex < 0) || (lInterfaces == NULL)) {
         return NULL;
     }
 
-    return &gLogInterfaces[(uint32_t)lIndex];
+    return &lInterfaces[(uint32_t)lIndex];
 }
 
 static stLogOutputState *logGetOutputStateByTransport(uint32_t transport)
@@ -384,7 +375,7 @@ static bool logLoadNextFrame(stLogOutputState *state)
 
 static uint32_t logGetAvailableInterfaceCount(void)
 {
-    return (uint32_t)(sizeof(gLogInterfaces) / sizeof(gLogInterfaces[0]));
+    return logPortGetInterfaceCount();
 }
 
 static uint32_t logGetInterfaceCount(void)
@@ -465,6 +456,7 @@ static uint16_t logFormatLine(char *buffer, uint16_t capacity, eLogLevel level, 
 
 bool logInit(void)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint32_t lIndex = 0U;
 
     if (gLogIsInitialized) {
@@ -477,15 +469,19 @@ bool logInit(void)
         return false;
     }
 
+    if (lInterfaces == NULL) {
+        return false;
+    }
+
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (logIsValidOutputInterface(&gLogInterfaces[lIndex]) &&
+        if (logIsValidOutputInterface(&lInterfaces[lIndex]) &&
             !logInitOutputState(&gLogOutputStates[lIndex])) {
             return false;
         }
 
-        if ((logIsValidOutputInterface(&gLogInterfaces[lIndex]) || logIsValidInputInterface(&gLogInterfaces[lIndex])) &&
-            (gLogInterfaces[lIndex].init != NULL)) {
-            gLogInterfaces[lIndex].init();
+        if ((logIsValidOutputInterface(&lInterfaces[lIndex]) || logIsValidInputInterface(&lInterfaces[lIndex])) &&
+            (lInterfaces[lIndex].init != NULL)) {
+            lInterfaces[lIndex].init();
         }
     }
 
@@ -495,11 +491,16 @@ bool logInit(void)
 
 uint32_t logGetInputCount(void)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint32_t lIndex = 0U;
     uint32_t lCount = 0U;
 
+    if (lInterfaces == NULL) {
+        return 0U;
+    }
+
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (logIsValidInputInterface(&gLogInterfaces[lIndex])) {
+        if (logIsValidInputInterface(&lInterfaces[lIndex])) {
             lCount++;
         }
     }
@@ -509,16 +510,21 @@ uint32_t logGetInputCount(void)
 
 uint32_t logGetInputTransport(uint32_t index)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint32_t lIndex = 0U;
     uint32_t lCount = 0U;
 
+    if (lInterfaces == NULL) {
+        return LOG_TRANSPORT_NONE;
+    }
+
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (!logIsValidInputInterface(&gLogInterfaces[lIndex])) {
+        if (!logIsValidInputInterface(&lInterfaces[lIndex])) {
             continue;
         }
 
         if (lCount == index) {
-            return gLogInterfaces[lIndex].transport;
+            return lInterfaces[lIndex].transport;
         }
 
         lCount++;
@@ -529,7 +535,7 @@ uint32_t logGetInputTransport(uint32_t index)
 
 stRingBuffer *logGetInputBuffer(uint32_t transport)
 {
-    stLogInterface *lInterface = NULL;
+    const stLogInterface *lInterface = NULL;
 
     lInterface = logGetInterfaceByTransport(transport);
     if (!logIsValidInputInterface(lInterface)) {
@@ -541,7 +547,7 @@ stRingBuffer *logGetInputBuffer(uint32_t transport)
 
 int32_t logWriteToTransport(uint32_t transport, const uint8_t *buffer, uint16_t length)
 {
-    stLogInterface *lInterface = NULL;
+    const stLogInterface *lInterface = NULL;
     stLogOutputState *lOutputState = NULL;
 
     if ((buffer == NULL) || (length == 0U)) {
@@ -620,24 +626,29 @@ static void logProcessInterface(const stLogInterface *interface, stLogOutputStat
 
 void logProcessOutput(void)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint32_t lIndex = 0U;
 
     if (!logInit()) {
         return;
     }
 
+    if (lInterfaces == NULL) {
+        return;
+    }
+
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (!logIsValidOutputInterface(&gLogInterfaces[lIndex])) {
+        if (!logIsValidOutputInterface(&lInterfaces[lIndex])) {
             continue;
         }
 
-        logProcessInterface(&gLogInterfaces[lIndex], &gLogOutputStates[lIndex]);
+        logProcessInterface(&lInterfaces[lIndex], &gLogOutputStates[lIndex]);
     }
 }
 
 bool logGetStats(uint32_t transport, stLogOutputStats *stats)
 {
-    stLogInterface *lInterface = NULL;
+    const stLogInterface *lInterface = NULL;
     stLogOutputState *lOutputState = NULL;
 
     if (stats == NULL) {
@@ -693,10 +704,15 @@ static const char *logGetLevelLabel(eLogLevel level)
 
 void logVWrite(eLogLevel level, const char *tag, const char *format, va_list args)
 {
+    const stLogInterface *lInterfaces = logGetInterfaces();
     uint16_t lLength = 0U;
     uint32_t lIndex = 0U;
 
     if (!logInit()) {
+        return;
+    }
+
+    if (lInterfaces == NULL) {
         return;
     }
 
@@ -711,7 +727,7 @@ void logVWrite(eLogLevel level, const char *tag, const char *format, va_list arg
     }
 
     for (lIndex = 0U; lIndex < logGetInterfaceCount(); lIndex++) {
-        if (!logIsValidOutputInterface(&gLogInterfaces[lIndex])) {
+        if (!logIsValidOutputInterface(&lInterfaces[lIndex])) {
             continue;
         }
 

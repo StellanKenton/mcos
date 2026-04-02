@@ -2,9 +2,9 @@
 
 ## Overview
 
-The log module uses one static interface array in `log.c`.
+The log module uses one static interface array in `log_port.c`.
 
-- `gLogInterfaces[]` defines all transport channels.
+- `gLogPortInterfaces[]` defines all transport channels.
 - `REP_LOG_OUTPUT_PORT` decides how many entries from the start of `gLogInterfaces[]` are active.
 - Each valid and enabled output receives every formatted log line.
 - Inputs are queried by `transport` through `logGetInputBuffer(transport)`.
@@ -114,10 +114,10 @@ static stRingBuffer *logUartGetBuffer(void)
 
 ## Interface Array Example
 
-Add transport channels in `log.c` like this:
+Add transport channels in `log_port.c` like this:
 
 ```c
-static stLogInterface gLogInterfaces[] = {
+static const stLogInterface gLogPortInterfaces[] = {
     {
         .transport = LOG_TRANSPORT_RTT,
         .init = bspRttLogInit,
@@ -158,7 +158,7 @@ When you append a new entry, increase `REP_LOG_OUTPUT_PORT` so the new entry is 
 
 ## Extension Notes
 
-- Keep one transport implementation in one dedicated file when possible, such as `SEGGER/bsp_rtt.c`, `log_uart.c`, or `log_can.c`.
-- Do not put transport SDK details directly into `log.c` unless the module is only used on one platform.
+- Keep one transport implementation in one dedicated file when possible, such as `SEGGER/bsp_rtt.c`, `log_port.c`, or `log_can.c`.
+- Do not put transport SDK details directly into `log.c`; keep them in `log_port.c` unless the module is only used on one platform.
 - Reuse existing driver modules for UART and CAN instead of calling MCU SDK APIs directly from business logic.
 - `SEGGER/bsp_rtt.c` now uses local default macros for RTT details: `BSP_RTT_LOG_OUTPUT_ENABLE`, `BSP_RTT_LOG_INPUT_ENABLE`, `BSP_RTT_UP_BUFFER_INDEX`, `BSP_RTT_DOWN_BUFFER_INDEX`, and `BSP_RTT_INPUT_BUFFER_SIZE`.

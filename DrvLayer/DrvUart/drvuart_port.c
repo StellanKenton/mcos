@@ -54,29 +54,4 @@ eDrvStatus drvUartPortGetStorageConfig(eDrvUartPortMap uart, uint8_t **storage, 
             return DRV_STATUS_UNSUPPORTED;
     }
 }
-
-#if (DRVUART_LOG_SUPPORT == 1)
-void drvUartLogInit(void)
-{
-    (void)drvUartInit(DRVUART_DEBUG);
-}
-
-int32_t drvUartLogWrite(const uint8_t *buffer, uint16_t length)
-{
-    if ((buffer == NULL) || (length == 0U)) {
-        return 0;
-    }
-
-    if (drvUartTransmitDma(DRVUART_DEBUG, buffer, length) != DRV_STATUS_OK) {
-        return 0;
-    }
-
-    return (int32_t)length;
-}
-
-stRingBuffer *drvUartLogGetInputBuffer(void)
-{
-    return drvUartGetRingBuffer(DRVUART_DEBUG);
-}
-#endif
 /**************************End of file********************************/

@@ -46,9 +46,6 @@ eDrvStatus drvUartTransmitDma(eDrvUartPortMap uart, const uint8_t *buffer, uint1
 eDrvStatus drvUartReceive(eDrvUartPortMap uart, uint8_t *buffer, uint16_t length);
 uint16_t drvUartGetDataLen(eDrvUartPortMap uart);
 stRingBuffer* drvUartGetRingBuffer(eDrvUartPortMap uart);
-void drvUartLogInit(void);
-int32_t drvUartLogWrite(const uint8_t *buffer, uint16_t length);
-stRingBuffer *drvUartLogGetInputBuffer(void);
 
 #ifdef __cplusplus
 }
