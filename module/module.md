@@ -36,6 +36,8 @@ module 目录下的文档按下面方式分工：
     <module>.c
     <module>_port.h
     <module>_port.c
+    <module>_debug.h
+    <module>_debug.c
     <module>.md
 ```
 
@@ -45,6 +47,7 @@ module 目录下的文档按下面方式分工：
 - `<module>.c`：模块核心逻辑，只表达模块语义，不直接依赖 bsp。
 - `<module>_port.h`：port 绑定结构、port 接口表、平台相关钩子声明。
 - `<module>_port.c`：默认总线映射、drv 适配函数、延时函数、板级连接方式。
+- `<module>_debug.h/.c`：可选 debug / console 注册接口与调试命令实现，必须受宏开关控制。
 - `<module>.md`：本模块内部设计说明，重点写 core 和 port 的契约。
 
 ## 4. 分层原则

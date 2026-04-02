@@ -25,6 +25,8 @@
 #include "Rep/drvlayer/drvspi/drvspi_debug.h"
 #include "drvgpio_debug.h"
 #include "drvuart_debug.h"
+#include "Rep/module/mpu6050/mpu6050_debug.h"
+#include "Rep/module/w25qxxx/w25qxxx_debug.h"
 #include "Rep/module/w25qxxx/w25qxxx.h"
 #include "Rep/module/w25qxxx/w25qxxx_port.h"
 
@@ -247,6 +249,16 @@ static bool initializeConsole(void)
 
     if (!drvUartDebugConsoleRegister()) {
         LOG_E(SYSTEM_TAG, "Register UART console command failed");
+        return false;
+    }
+
+    if (!mpu6050DebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register MPU6050 console command failed");
+        return false;
+    }
+
+    if (!w25qxxxDebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register W25QXXX console command failed");
         return false;
     }
 

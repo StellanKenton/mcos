@@ -45,6 +45,7 @@ static eConsoleCommandResult drvUartDebugFlushRxBuffer(uint32_t transport);
 static eConsoleCommandResult drvUartDebugReadRxData(uint32_t transport, uint32_t length, eDrvUartDebugReadMode mode);
 static eConsoleCommandResult drvUartDebugSendText(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvUartDebugSendHex(uint32_t transport, int argc, char *argv[]);
+static eConsoleCommandResult drvUartDebugReplyHelp(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvUartDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
 
 static const stDrvUartDebugPortDescriptor gDrvUartDebugPorts[] = {
@@ -59,7 +60,7 @@ static const stDrvUartDebugPortDescriptor gDrvUartDebugPorts[] = {
 
 static const stConsoleCommand gDrvUartConsoleCommand = {
     .commandName = "uart",
-    .helpText = "uart <list|stat|rxlen|read|flush|send|sendhex> ...",
+    .helpText = "uart <list|stat|rxlen|read|flush|send|sendhex|help> ...",
     .ownerTag = "drvUart",
     .handler = drvUartDebugConsoleHandler,
 };
@@ -518,6 +519,10 @@ static eConsoleCommandResult drvUartDebugConsoleHandler(uint32_t transport, int 
         return drvUartDebugFlushRxBuffer(transport);
     }
 
+    if (strcmp(argv[1], "help") == 0) {
+        return drvUartDebugReplyHelp(transport, argc, argv);
+    }
+
     if ((strcmp(argv[1], "read") == 0) || (strcmp(argv[1], "recv") == 0)) {
         if ((argc != 3) && (argc != 4)) {
             return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
@@ -546,6 +551,70 @@ static eConsoleCommandResult drvUartDebugConsoleHandler(uint32_t transport, int 
 
     if ((strcmp(argv[1], "sendhex") == 0) || (strcmp(argv[1], "txhex") == 0)) {
         return drvUartDebugSendHex(transport, argc, argv);
+    }
+
+    return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+}
+
+static eConsoleCommandResult drvUartDebugReplyHelp(uint32_t transport, int argc, char *argv[])
+{
+    if (argc == 2) {
+        if (consoleReply(transport,
+            "uart <list|stat|rxlen|read|flush|send|sendhex|help> ...\n"
+            "  list\n"
+            "  stat\n"
+            "  rxlen\n"
+            "  flush\n"
+            "  help <read|send|sendhex>\n"
+            "    example: uart help read\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (argc != 3) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if ((strcmp(argv[2], "read") == 0) || (strcmp(argv[2], "recv") == 0)) {
+        if (consoleReply(transport,
+            "uart read <len> [text|hex]\n"
+            "  alias: recv\n"
+            "  len is decimal 1..24, mode defaults to hex\n"
+            "  example: uart read 8 hex\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "send") == 0) || (strcmp(argv[2], "tx") == 0)) {
+        if (consoleReply(transport,
+            "uart send <word0> [word1 ...]\n"
+            "  alias: tx\n"
+            "  words are joined with spaces, total text length max 64 chars\n"
+            "  example: uart send hello world\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "sendhex") == 0) || (strcmp(argv[2], "txhex") == 0)) {
+        if (consoleReply(transport,
+            "uart sendhex <b0> [b1 ... b23]\n"
+            "  alias: txhex\n"
+            "  data bytes support hex, max 24 bytes\n"
+            "  example: uart sendhex 0x48 0x69\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
     }
 
     return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;

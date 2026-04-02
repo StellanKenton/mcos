@@ -19,6 +19,10 @@
 extern "C" {
 #endif
 
+#ifndef MPU6050_CONSOLE_SUPPORT
+#define MPU6050_CONSOLE_SUPPORT              1
+#endif
+
 #ifndef MPU6050_PORT_RESET_DELAY_MS
 #define MPU6050_PORT_RESET_DELAY_MS            100U
 #endif

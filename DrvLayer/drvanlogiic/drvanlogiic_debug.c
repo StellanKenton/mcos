@@ -37,11 +37,12 @@ static eConsoleCommandResult drvAnlogIicDebugHandleWrite(uint32_t transport, eDr
 static eConsoleCommandResult drvAnlogIicDebugHandleRead(uint32_t transport, eDrvAnlogIicPortMap iic, int argc, char *argv[]);
 static eConsoleCommandResult drvAnlogIicDebugHandleWriteReg(uint32_t transport, eDrvAnlogIicPortMap iic, int argc, char *argv[]);
 static eConsoleCommandResult drvAnlogIicDebugHandleReadReg(uint32_t transport, eDrvAnlogIicPortMap iic, int argc, char *argv[]);
+static eConsoleCommandResult drvAnlogIicDebugReplyHelp(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvAnlogIicDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
 
 static const stConsoleCommand gDrvAnlogIicConsoleCommand = {
     .commandName = "anlogiic",
-    .helpText = "anlogiic <list|init|recover|write|read|writereg|readreg> ...",
+    .helpText = "anlogiic <list|init|recover|write|read|writereg|readreg|help> ...",
     .ownerTag = "drvAnlogIic",
     .handler = drvAnlogIicDebugConsoleHandler,
 };
@@ -429,6 +430,10 @@ static eConsoleCommandResult drvAnlogIicDebugConsoleHandler(uint32_t transport, 
         return drvAnlogIicDebugReplyBusList(transport);
     }
 
+    if (strcmp(argv[1], "help") == 0) {
+        return drvAnlogIicDebugReplyHelp(transport, argc, argv);
+    }
+
     if ((argc < 3) || (argv[2] == NULL)) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
@@ -459,6 +464,80 @@ static eConsoleCommandResult drvAnlogIicDebugConsoleHandler(uint32_t transport, 
 
     if ((strcmp(argv[1], "readreg") == 0) || (strcmp(argv[1], "rr") == 0)) {
         return drvAnlogIicDebugHandleReadReg(transport, lIic, argc, argv);
+    }
+
+    return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+}
+
+static eConsoleCommandResult drvAnlogIicDebugReplyHelp(uint32_t transport, int argc, char *argv[])
+{
+    if (argc == 2) {
+        if (consoleReply(transport,
+            "anlogiic <list|init|recover|write|read|writereg|readreg|help> ...\n"
+            "  list\n"
+            "  init <bus0|0>\n"
+            "  recover <bus0|0>\n"
+            "  help <read|write|readreg|writereg>\n"
+            "    example: anlogiic help read\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (argc != 3) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if (strcmp(argv[2], "read") == 0) {
+        if (consoleReply(transport,
+            "anlogiic read <bus0|0> <addr> <len>\n"
+            "  addr supports hex byte, len is decimal 1..16\n"
+            "  example: anlogiic read bus0 0x68 4\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (strcmp(argv[2], "write") == 0) {
+        if (consoleReply(transport,
+            "anlogiic write <bus0|0> <addr> <b0> [b1 ... b15]\n"
+            "  addr and data bytes support hex, max 16 bytes\n"
+            "  example: anlogiic write bus0 0x68 0x75\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "writereg") == 0) || (strcmp(argv[2], "wr") == 0)) {
+        if (consoleReply(transport,
+            "anlogiic writereg <bus0|0> <addr> <reg> <b0> [b1 ... b15]\n"
+            "  alias: wr\n"
+            "  addr, reg and data bytes support hex, max 16 bytes\n"
+            "  example: anlogiic writereg bus0 0x68 0x75 0x00\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "readreg") == 0) || (strcmp(argv[2], "rr") == 0)) {
+        if (consoleReply(transport,
+            "anlogiic readreg <bus0|0> <addr> <reg> <len>\n"
+            "  alias: rr\n"
+            "  addr and reg support hex, len is decimal 1..16\n"
+            "  example: anlogiic readreg bus0 0x68 0x75 1\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
     }
 
     return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;

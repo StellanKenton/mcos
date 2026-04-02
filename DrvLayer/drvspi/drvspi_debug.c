@@ -32,11 +32,12 @@ static eConsoleCommandResult drvSpiDebugHandleWrite(uint32_t transport, eDrvSpiP
 static eConsoleCommandResult drvSpiDebugHandleRead(uint32_t transport, eDrvSpiPortMap spi, int argc, char *argv[]);
 static eConsoleCommandResult drvSpiDebugHandleWriteRead(uint32_t transport, eDrvSpiPortMap spi, int argc, char *argv[]);
 static eConsoleCommandResult drvSpiDebugHandleExchange(uint32_t transport, eDrvSpiPortMap spi, int argc, char *argv[]);
+static eConsoleCommandResult drvSpiDebugReplyHelp(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvSpiDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
 
 static const stConsoleCommand gDrvSpiConsoleCommand = {
     .commandName = "spi",
-    .helpText = "spi <list|init|write|read|writeread|exchange> ...",
+    .helpText = "spi <list|init|write|read|writeread|exchange|help> ...",
     .ownerTag = "drvSpi",
     .handler = drvSpiDebugConsoleHandler,
 };
@@ -433,6 +434,10 @@ static eConsoleCommandResult drvSpiDebugConsoleHandler(uint32_t transport, int a
         return drvSpiDebugReplyBusList(transport);
     }
 
+    if (strcmp(argv[1], "help") == 0) {
+        return drvSpiDebugReplyHelp(transport, argc, argv);
+    }
+
     if ((argc < 3) || (argv[2] == NULL)) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
@@ -459,6 +464,79 @@ static eConsoleCommandResult drvSpiDebugConsoleHandler(uint32_t transport, int a
 
     if ((strcmp(argv[1], "exchange") == 0) || (strcmp(argv[1], "xfer") == 0)) {
         return drvSpiDebugHandleExchange(transport, lSpi, argc, argv);
+    }
+
+    return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+}
+
+static eConsoleCommandResult drvSpiDebugReplyHelp(uint32_t transport, int argc, char *argv[])
+{
+    if (argc == 2) {
+        if (consoleReply(transport,
+            "spi <list|init|write|read|writeread|exchange|help> ...\n"
+            "  list\n"
+            "  init <bus0|0|bus1|1>\n"
+            "  help <read|write|writeread|exchange>\n"
+            "    example: spi help writeread\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (argc != 3) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if (strcmp(argv[2], "read") == 0) {
+        if (consoleReply(transport,
+            "spi read <bus0|0|bus1|1> <len>\n"
+            "  len is decimal 1..16\n"
+            "  example: spi read bus0 4\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (strcmp(argv[2], "write") == 0) {
+        if (consoleReply(transport,
+            "spi write <bus0|0|bus1|1> <b0> [b1 ... b15]\n"
+            "  data bytes support hex, max 16 bytes\n"
+            "  example: spi write bus0 0x9F\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "writeread") == 0) || (strcmp(argv[2], "wr") == 0)) {
+        if (consoleReply(transport,
+            "spi writeread <bus0|0|bus1|1> <b0> [b1 ... b15] <len>\n"
+            "  alias: wr\n"
+            "  write bytes support hex, read len is decimal 1..16\n"
+            "  example: spi writeread bus0 0x9F 3\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "exchange") == 0) || (strcmp(argv[2], "xfer") == 0)) {
+        if (consoleReply(transport,
+            "spi exchange <bus0|0|bus1|1> <b0> [b1 ... b15]\n"
+            "  alias: xfer\n"
+            "  data bytes support hex, max 16 bytes\n"
+            "  example: spi exchange bus0 0x9F 0x00 0x00 0x00\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
     }
 
     return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;

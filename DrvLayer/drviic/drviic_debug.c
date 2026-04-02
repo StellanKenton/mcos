@@ -37,11 +37,12 @@ static eConsoleCommandResult drvIicDebugHandleWrite(uint32_t transport, eDrvIicP
 static eConsoleCommandResult drvIicDebugHandleRead(uint32_t transport, eDrvIicPortMap iic, int argc, char *argv[]);
 static eConsoleCommandResult drvIicDebugHandleWriteReg(uint32_t transport, eDrvIicPortMap iic, int argc, char *argv[]);
 static eConsoleCommandResult drvIicDebugHandleReadReg(uint32_t transport, eDrvIicPortMap iic, int argc, char *argv[]);
+static eConsoleCommandResult drvIicDebugReplyHelp(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvIicDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
 
 static const stConsoleCommand gDrvIicConsoleCommand = {
     .commandName = "iic",
-    .helpText = "iic <list|init|recover|write|read|writereg|readreg> ...",
+    .helpText = "iic <list|init|recover|write|read|writereg|readreg|help> ...",
     .ownerTag = "drvIic",
     .handler = drvIicDebugConsoleHandler,
 };
@@ -429,6 +430,10 @@ static eConsoleCommandResult drvIicDebugConsoleHandler(uint32_t transport, int a
         return drvIicDebugReplyBusList(transport);
     }
 
+    if (strcmp(argv[1], "help") == 0) {
+        return drvIicDebugReplyHelp(transport, argc, argv);
+    }
+
     if ((argc < 3) || (argv[2] == NULL)) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
@@ -459,6 +464,80 @@ static eConsoleCommandResult drvIicDebugConsoleHandler(uint32_t transport, int a
 
     if ((strcmp(argv[1], "readreg") == 0) || (strcmp(argv[1], "rr") == 0)) {
         return drvIicDebugHandleReadReg(transport, lIic, argc, argv);
+    }
+
+    return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+}
+
+static eConsoleCommandResult drvIicDebugReplyHelp(uint32_t transport, int argc, char *argv[])
+{
+    if (argc == 2) {
+        if (consoleReply(transport,
+            "iic <list|init|recover|write|read|writereg|readreg|help> ...\n"
+            "  list\n"
+            "  init <bus0|0>\n"
+            "  recover <bus0|0>\n"
+            "  help <read|write|readreg|writereg>\n"
+            "    example: iic help read\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (argc != 3) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if (strcmp(argv[2], "read") == 0) {
+        if (consoleReply(transport,
+            "iic read <bus0|0> <addr> <len>\n"
+            "  addr supports hex byte, len is decimal 1..16\n"
+            "  example: iic read bus0 0x68 4\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (strcmp(argv[2], "write") == 0) {
+        if (consoleReply(transport,
+            "iic write <bus0|0> <addr> <b0> [b1 ... b15]\n"
+            "  addr and data bytes support hex, max 16 bytes\n"
+            "  example: iic write bus0 0x68 0x75\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "writereg") == 0) || (strcmp(argv[2], "wr") == 0)) {
+        if (consoleReply(transport,
+            "iic writereg <bus0|0> <addr> <reg> <b0> [b1 ... b15]\n"
+            "  alias: wr\n"
+            "  addr, reg and data bytes support hex, max 16 bytes\n"
+            "  example: iic writereg bus0 0x68 0x75 0x00\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "readreg") == 0) || (strcmp(argv[2], "rr") == 0)) {
+        if (consoleReply(transport,
+            "iic readreg <bus0|0> <addr> <reg> <len>\n"
+            "  alias: rr\n"
+            "  addr and reg support hex, len is decimal 1..16\n"
+            "  example: iic readreg bus0 0x68 0x75 1\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
     }
 
     return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;

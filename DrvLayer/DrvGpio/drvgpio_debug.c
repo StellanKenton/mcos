@@ -27,11 +27,12 @@ static bool drvGpioDebugParseConsoleState(const char *argument, eDrvGpioPinState
 static const char *drvGpioDebugGetStateText(eDrvGpioPinState state);
 static eConsoleCommandResult drvGpioDebugReplyPinState(uint32_t transport, eDrvGpioPinMap pin);
 static eConsoleCommandResult drvGpioDebugReplyPinList(uint32_t transport);
+static eConsoleCommandResult drvGpioDebugReplyHelp(uint32_t transport, int argc, char *argv[]);
 static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int argc, char *argv[]);
 
 static const stConsoleCommand gDrvGpioConsoleCommand = {
     .commandName = "gpio",
-    .helpText = "gpio <list|get|set|toggle> [pin] [0|1|on|off]",
+    .helpText = "gpio <list|get|set|toggle|help> ...",
     .ownerTag = "drvGpio",
     .handler = drvGpioDebugConsoleHandler,
 };
@@ -289,6 +290,10 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
         return drvGpioDebugReplyPinList(transport);
     }
 
+    if (strcmp(argv[1], "help") == 0) {
+        return drvGpioDebugReplyHelp(transport, argc, argv);
+    }
+
     if (argc < 3) {
         return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
     }
@@ -329,6 +334,67 @@ static eConsoleCommandResult drvGpioDebugConsoleHandler(uint32_t transport, int 
 
         drvGpioToggle(lPin);
         if (consoleReply(transport, "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+}
+
+static eConsoleCommandResult drvGpioDebugReplyHelp(uint32_t transport, int argc, char *argv[])
+{
+    if (argc == 2) {
+        if (consoleReply(transport,
+            "gpio <list|get|set|toggle|help> ...\n"
+            "  list\n"
+            "  help <get|set|toggle>\n"
+            "    example: gpio help set\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (argc != 3) {
+        return CONSOLE_COMMAND_RESULT_INVALID_ARGUMENT;
+    }
+
+    if ((strcmp(argv[2], "get") == 0) || (strcmp(argv[2], "read") == 0)) {
+        if (consoleReply(transport,
+            "gpio get <pin>\n"
+            "  pin: ledr|ledg|ledb|key\n"
+            "  alias: read\n"
+            "  example: gpio get key\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if ((strcmp(argv[2], "set") == 0) || (strcmp(argv[2], "write") == 0)) {
+        if (consoleReply(transport,
+            "gpio set <pin> <state>\n"
+            "  pin: ledr|ledg|ledb\n"
+            "  state: 0|1|on|off|set|reset|active|inactive\n"
+            "  alias: write\n"
+            "  example: gpio set ledr on\n"
+            "OK") <= 0) {
+            return CONSOLE_COMMAND_RESULT_ERROR;
+        }
+
+        return CONSOLE_COMMAND_RESULT_OK;
+    }
+
+    if (strcmp(argv[2], "toggle") == 0) {
+        if (consoleReply(transport,
+            "gpio toggle <pin>\n"
+            "  pin: ledr|ledg|ledb\n"
+            "  example: gpio toggle ledr\n"
+            "OK") <= 0) {
             return CONSOLE_COMMAND_RESULT_ERROR;
         }
 

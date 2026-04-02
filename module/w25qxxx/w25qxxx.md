@@ -65,6 +65,14 @@ core 只依赖 port 提供的两个原子动作：
 
 这个文件的本质不是写 Flash 协议，而是把当前工程的 SPI drv 翻译成 W25QXXX core 需要的最小访问能力。
 
+### 2.5 `w25qxxx_debug.h/.c`
+
+负责实现：
+
+- 可选 console 注册入口。
+- `list`、`init`、`jedec`、`status`、`info`、`read`、`write`、`erase` 等调试命令。
+- 保持命令轻量，只覆盖联调和定位问题所需的关键动作。
+
 ## 3. core 需要的最小底层能力
 
 从 `w25qxxx.c` 可以直接看出，core 对 port 只有三类需求：
