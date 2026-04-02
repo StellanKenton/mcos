@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 #ifndef DRVIIC_CONSOLE_SUPPORT
-#define DRVIIC_CONSOLE_SUPPORT                0
+#define DRVIIC_CONSOLE_SUPPORT                1
 #endif
 
 #define DRVIIC_LOCK_WAIT_MS                   5U

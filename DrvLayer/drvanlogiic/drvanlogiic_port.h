@@ -15,8 +15,13 @@
 extern "C" {
 #endif
 
+#ifndef DRVANLOGIIC_LOG_SUPPORT
 #define DRVANLOGIIC_LOG_SUPPORT                 1
-#define DRVANLOGIIC_CONSOLE_SUPPORT             0
+#endif
+
+#ifndef DRVANLOGIIC_CONSOLE_SUPPORT
+#define DRVANLOGIIC_CONSOLE_SUPPORT             1
+#endif
 
 #define DRVANLOGIIC_LOCK_WAIT_MS                5U
 #define DRVANLOGIIC_DEFAULT_HALF_PERIOD_US      10U

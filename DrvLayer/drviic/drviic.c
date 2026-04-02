@@ -10,10 +10,16 @@
 **********************************************************************************/
 #include "drviic.h"
 
+#if (DRVIIC_LOG_SUPPORT == 1)
+#include "../../Console/log.h"
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "rep_config.h"
+
+#define DRVIIC_LOG_TAG                   "drvIic"
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
 #include "FreeRTOS.h"
@@ -254,6 +260,9 @@ eDrvStatus drvIicInit(eDrvIicPortMap iic)
     }
 
     if (!drvIicHasValidBspInterface(iic)) {
+        #if (DRVIIC_LOG_SUPPORT == 1)
+        LOG_E(DRVIIC_LOG_TAG, "Invalid BSP interface for bus %u", (unsigned int)iic);
+        #endif
         return DRV_STATUS_NOT_READY;
     }
 
@@ -271,6 +280,9 @@ eDrvStatus drvIicInit(eDrvIicPortMap iic)
 
     lStatus = lBspInterface->init(iic);
     if (lStatus != DRV_STATUS_OK) {
+        #if (DRVIIC_LOG_SUPPORT == 1)
+        LOG_E(DRVIIC_LOG_TAG, "IIC bus %u init failed, status=%d", (unsigned int)iic, (int)lStatus);
+        #endif
         return lStatus;
     }
 
@@ -303,6 +315,11 @@ eDrvStatus drvIicRecoverBus(eDrvIicPortMap iic)
 
     lStatus = lBspInterface->recoverBus(iic);
     drvIicUnlockBus(iic);
+    if (lStatus != DRV_STATUS_OK) {
+        #if (DRVIIC_LOG_SUPPORT == 1)
+        LOG_W(DRVIIC_LOG_TAG, "IIC bus %u recover failed, status=%d", (unsigned int)iic, (int)lStatus);
+        #endif
+    }
     return lStatus;
 }
 

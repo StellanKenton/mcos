@@ -20,6 +20,9 @@
 #include "system.h"
 #include "system_debug.h"
 #include "sys_int.h"
+#include "drvanlogiic_debug.h"
+#include "drviic_debug.h"
+#include "Rep/drvlayer/drvspi/drvspi_debug.h"
 #include "drvgpio_debug.h"
 #include "drvuart_debug.h"
 #include "Rep/module/w25qxxx/w25qxxx.h"
@@ -224,6 +227,21 @@ static bool initializeConsole(void)
 
     if (!drvGpioDebugConsoleRegister()) {
         LOG_E(SYSTEM_TAG, "Register GPIO console command failed");
+        return false;
+    }
+
+    if (!drvAnlogIicDebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register software IIC console command failed");
+        return false;
+    }
+
+    if (!drvIicDebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register hardware IIC console command failed");
+        return false;
+    }
+
+    if (!drvSpiDebugConsoleRegister()) {
+        LOG_E(SYSTEM_TAG, "Register SPI console command failed");
         return false;
     }
 
@@ -474,3 +492,4 @@ static void memoryTaskCallback(void *parameter)
     }
 }
 /**************************End of file********************************/
+

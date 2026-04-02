@@ -16,8 +16,13 @@ extern "C" {
 #endif
 
 
+#ifndef DRVGPIO_LOG_SUPPORT
 #define DRVGPIO_LOG_SUPPORT             1
+#endif
+
+#ifndef DRVGPIO_CONSOLE_SUPPORT
 #define DRVGPIO_CONSOLE_SUPPORT         1
+#endif
 
 typedef enum eDrvGpioPinState {
     DRVGPIO_PIN_RESET = 0,

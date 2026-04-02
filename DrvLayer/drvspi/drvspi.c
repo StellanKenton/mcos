@@ -7,11 +7,17 @@
 **********************************************************************************/
 #include "drvspi.h"
 
+#if (DRVSPI_LOG_SUPPORT == 1)
+#include "../../Console/log.h"
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
 #include "rep_config.h"
+
+#define DRVSPI_LOG_TAG                   "drvSpi"
 
 #if (REP_RTOS_SYSTEM == REP_RTOS_FREERTOS)
 #include "FreeRTOS.h"
@@ -321,6 +327,9 @@ eDrvStatus drvSpiInit(eDrvSpiPortMap spi)
     }
 
     if (!drvSpiHasValidBspInterface(spi)) {
+        #if (DRVSPI_LOG_SUPPORT == 1)
+        LOG_E(DRVSPI_LOG_TAG, "Invalid BSP interface for bus %u", (unsigned int)spi);
+        #endif
         return DRV_STATUS_NOT_READY;
     }
 
@@ -338,6 +347,9 @@ eDrvStatus drvSpiInit(eDrvSpiPortMap spi)
 
     lStatus = lBspInterface->init(spi);
     if (lStatus != DRV_STATUS_OK) {
+        #if (DRVSPI_LOG_SUPPORT == 1)
+        LOG_E(DRVSPI_LOG_TAG, "SPI bus %u init failed, status=%d", (unsigned int)spi, (int)lStatus);
+        #endif
         return lStatus;
     }
 

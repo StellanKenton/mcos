@@ -344,7 +344,7 @@ bool drvGpioDebugConsoleRegister(void)
 #if (DRVGPIO_CONSOLE_SUPPORT == 1)
     return consoleRegisterCommand(&gDrvGpioConsoleCommand);
 #else
-    return false;
+    return true;
 #endif
 }
 

@@ -9,8 +9,14 @@
 **********************************************************************************/
 #include "drvuart.h"
 
+#if (DRVUART_LOG_SUPPORT == 1)
+#include "../../Console/log.h"
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
+
+#define DRVUART_LOG_TAG                 "drvUart"
 
 static bool gDrvUartInitialized[DRVUART_MAX];
 
@@ -153,6 +159,9 @@ eDrvStatus drvUartInit(eDrvUartPortMap uart)
     }
 
     if (!drvUartHasValidBspInterface(uart)) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "Invalid BSP interface for uart %u", (unsigned int)uart);
+        #endif
         return DRV_STATUS_NOT_READY;
     }
 
@@ -163,10 +172,16 @@ eDrvStatus drvUartInit(eDrvUartPortMap uart)
 
     lStatus = drvUartPortGetStorageConfig(uart, &lStorage, &lCapacity);
     if (lStatus != DRV_STATUS_OK) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "Get storage config failed for uart %u, status=%d", (unsigned int)uart, (int)lStatus);
+        #endif
         return lStatus;
     }
 
     if (lBspInterface->Buffer == NULL) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "UART %u rx buffer is not configured", (unsigned int)uart);
+        #endif
         return DRV_STATUS_NOT_READY;
     }
 
@@ -174,15 +189,24 @@ eDrvStatus drvUartInit(eDrvUartPortMap uart)
 
     lRingBuffer = drvUartPortGetRingBuffer(uart);
     if (lRingBuffer == NULL) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "UART %u ring buffer is not available", (unsigned int)uart);
+        #endif
         return DRV_STATUS_ERROR;
     }
 
     if (ringBufferInit(lRingBuffer, lStorage, lCapacity) != RINGBUFFER_OK) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "UART %u ring buffer init failed", (unsigned int)uart);
+        #endif
         return DRV_STATUS_ERROR;
     }
 
     lStatus = lBspInterface->init(uart);
     if (lStatus != DRV_STATUS_OK) {
+        #if (DRVUART_LOG_SUPPORT == 1)
+        LOG_E(DRVUART_LOG_TAG, "UART %u init failed, status=%d", (unsigned int)uart, (int)lStatus);
+        #endif
         return lStatus;
     }
 

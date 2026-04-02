@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 #ifndef DRVSPI_CONSOLE_SUPPORT
-#define DRVSPI_CONSOLE_SUPPORT                0
+#define DRVSPI_CONSOLE_SUPPORT                1
 #endif
 
 #define DRVSPI_LOCK_WAIT_MS                   5U

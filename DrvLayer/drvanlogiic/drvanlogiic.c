@@ -477,6 +477,9 @@ eDrvStatus drvAnlogIicInit(eDrvAnlogIicPortMap iic)
     lStatus = drvAnlogIicRecoverBusLocked(iic, lBspInterface);
     drvAnlogIicUnlockBus(iic);
     if (lStatus != DRV_STATUS_OK) {
+        #if (DRVANLOGIIC_LOG_SUPPORT == 1)
+        LOG_E(DRVANLOGIIC_LOG_TAG, "Software IIC bus %u init recover failed, status=%d", (unsigned int)iic, (int)lStatus);
+        #endif
         return lStatus;
     }
 
@@ -504,6 +507,11 @@ eDrvStatus drvAnlogIicRecoverBus(eDrvAnlogIicPortMap iic)
     lBspInterface = drvAnlogIicGetBspInterface(iic);
     lStatus = drvAnlogIicRecoverBusLocked(iic, lBspInterface);
     drvAnlogIicUnlockBus(iic);
+    if (lStatus != DRV_STATUS_OK) {
+        #if (DRVANLOGIIC_LOG_SUPPORT == 1)
+        LOG_W(DRVANLOGIIC_LOG_TAG, "Software IIC bus %u recover failed, status=%d", (unsigned int)iic, (int)lStatus);
+        #endif
+    }
     return lStatus;
 }
 
