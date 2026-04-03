@@ -214,14 +214,14 @@ AT 类模块经常出现很多空行，例如：
 可以包含这些信息：
 
 ```c
-typedef enum eWifiCmdStage {
-    WIFI_CMD_STAGE_WAIT_RESPONSE = 0,
-    WIFI_CMD_STAGE_WAIT_PROMPT,
-    WIFI_CMD_STAGE_SEND_PAYLOAD,
-    WIFI_CMD_STAGE_WAIT_FINAL
-} eWifiCmdStage;
+typedef enum eFlowParserStage {
+    FLOWPARSER_STAGE_WAIT_RESPONSE = 0,
+    FLOWPARSER_STAGE_WAIT_PROMPT,
+    FLOWPARSER_STAGE_SEND_PAYLOAD,
+    FLOWPARSER_STAGE_WAIT_FINAL
+} eFlowParserStage;
 
-typedef struct stWifiCmdSpec {
+typedef struct stFlowParserSpec {
     const char *commandText;
     const char *successTokens[4];
     const char *errorTokens[4];
@@ -230,7 +230,7 @@ typedef struct stWifiCmdSpec {
     uint32_t finalTimeoutMs;
     bool needPrompt;
     bool allowUrcDuringWait;
-} stWifiCmdSpec;
+} stFlowParserSpec;
 ```
 
 这里的重点不是字段必须一模一样，而是：
@@ -246,22 +246,22 @@ typedef struct stWifiCmdSpec {
 可以包含这些状态：
 
 ```c
-typedef enum eWifiCmdResult {
-    WIFI_CMD_RESULT_NONE = 0,
-    WIFI_CMD_RESULT_OK,
-    WIFI_CMD_RESULT_ERROR,
-    WIFI_CMD_RESULT_TIMEOUT,
-    WIFI_CMD_RESULT_OVERFLOW
-} eWifiCmdResult;
+typedef enum eFlowParserResult {
+    FLOWPARSER_RESULT_NONE = 0,
+    FLOWPARSER_RESULT_OK,
+    FLOWPARSER_RESULT_ERROR,
+    FLOWPARSER_RESULT_TIMEOUT,
+    FLOWPARSER_RESULT_OVERFLOW
+} eFlowParserResult;
 
-typedef struct stWifiCmdTransaction {
-    const stWifiCmdSpec *spec;
-    eWifiCmdStage stage;
-    eWifiCmdResult result;
+typedef struct stFlowParserTransaction {
+    const stFlowParserSpec *spec;
+    eFlowParserStage stage;
+    eFlowParserResult result;
     uint32_t stageStartTick;
     uint32_t lastByteTick;
     bool isActive;
-} stWifiCmdTransaction;
+} stFlowParserTransaction;
 ```
 
 ### 6.3 发送请求
@@ -271,24 +271,24 @@ typedef struct stWifiCmdTransaction {
 可以包含这些信息：
 
 ```c
-typedef void (*fnWifiCmdComplete)(void *pUserData, eWifiCmdResult result);
+typedef void (*fnFlowParserComplete)(void *pUserData, eFlowParserResult result);
 
-typedef struct stWifiCmdRequest {
-    const stWifiCmdSpec *spec;
+typedef struct stFlowParserRequest {
+    const stFlowParserSpec *spec;
     const uint8_t *pPayload;
     uint16_t payloadLen;
     uint32_t requestTimeoutMs;
     bool isBlocking;
     void *pUserData;
-    fnWifiCmdComplete fnComplete;
-} stWifiCmdRequest;
+    fnFlowParserComplete fnComplete;
+} stFlowParserRequest;
 ```
 
 这里建议明确区分三件事：
 
-- `stWifiCmdRequest`：上层提交的一次请求。
-- `stWifiCmdTransaction`：执行器当前正在跑的事务。
-- `stWifiCmdSpec`：某类命令的固定规则。
+- `stFlowParserRequest`：上层提交的一次请求。
+- `stFlowParserTransaction`：执行器当前正在跑的事务。
+- `stFlowParserSpec`：某类命令的固定规则。
 
 这样做的好处是：
 
@@ -475,8 +475,8 @@ AT+CWJAP="ssid","pwd"\r\n\r\nWIFI CONNECTED\r\nWIFI GOT IP\r\n\r\nOK\r\n
 更好的方式是所有业务都通过统一接口提交请求，例如：
 
 ```c
-eWifiCmdSubmitResult wifiCmdStreamSubmit(const stWifiCmdRequest *pRequest);
-void wifiCmdStreamProcess(void);
+eFlowParserSubmitResult flowparserStreamSubmit(const stFlowParserRequest *pRequest);
+void flowparserStreamProcess(void);
 ```
 
 也就是说：
@@ -518,7 +518,7 @@ void wifiCmdStreamProcess(void);
 推荐采用下面这种模型：
 
 - `ISR/DMA RX`：负责收字节入 ringbuffer。
-- `wifiCmdExecutorTask` 或周期轮询函数：负责处理请求队列、发送命令、消费词元、检查超时、完成通知。
+- `flowparserExecutorTask` 或周期轮询函数：负责处理请求队列、发送命令、消费词元、检查超时、完成通知。
 - `application task`：负责发起请求，等待同步结果或者接收异步回调。
 
 其中最稳妥的组织方式通常是：
@@ -531,7 +531,7 @@ void wifiCmdStreamProcess(void);
 
 建议的完整交互可以写成下面这样：
 
-1. 业务层构造 `stWifiCmdRequest` 并调用 `wifiCmdStreamSubmit()`。
+1. 业务层构造 `stFlowParserRequest` 并调用 `flowparserStreamSubmit()`。
 2. 执行器把请求放入待处理队列，或者在空闲时直接接管为当前事务。
 3. 执行器调用 port 层发送函数发出命令文本。
 4. 接收 ISR 持续把模块返回字节写入 ringbuffer。
@@ -555,8 +555,8 @@ void wifiCmdStreamProcess(void);
 
 例如：
 
-- `wifiCmdStreamSubmit()`：异步提交。
-- `wifiCmdStreamExecuteBlocking()`：内部提交后等待结果。
+- `flowparserStreamSubmit()`：异步提交。
+- `flowparserStreamExecuteBlocking()`：内部提交后等待结果。
 
 这样做的好处是：
 
@@ -590,9 +590,9 @@ void wifiCmdStreamProcess(void);
 
 如果后面真的要落地成模块，我更建议接口边界如下：
 
-- `wifi_cmd_stream_port`：提供 `sendBytes()`、`getTickMs()`、`notifyWorker()` 等底层能力。
-- `wifi_cmd_tokenizer`：提供词元切分能力。
-- `wifi_cmd_stream`：提供请求提交、事务执行、结果查询、URC 分发。
+- `flowparser_stream_port`：提供 `sendBytes()`、`getTickMs()`、`notifyWorker()` 等底层能力。
+- `flowparser_tokenizer`：提供词元切分能力。
+- `flowparser_stream`：提供请求提交、事务执行、结果查询、URC 分发。
 
 也就是说：
 
@@ -644,10 +644,10 @@ ISR 只做收字节入缓冲。
 
 如果后面你要把它真正写成模块，我更建议这样拆分：
 
-- `wifi_cmd_stream.h/.c`
-- `wifi_cmd_stream_port.h/.c`
-- `wifi_cmd_tokenizer.h/.c`
-- `wifi_cmd_stream.md`
+- `flowparser_stream.h/.c`
+- `flowparser_stream_port.h/.c`
+- `flowparser_tokenizer.h/.c`
+- `flowparser_stream.md`
 
 其中：
 
